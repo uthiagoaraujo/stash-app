@@ -1335,8 +1335,7 @@ function renderInsights() {
   const daysElapsed = Math.max(1, Math.round((todayD - csDate)/(864e5)) + 1);
   const avgDaily = cycleTotal / daysElapsed;
 
-  /* 4. Relação receita/gasto */
-  const relacao = cycleIncTotal > 0 ? Math.round(cycleTotal/cycleIncTotal*100) : null;
+  const relacao = null; // income removed
 
   /* 5. Comprometimento futuro (next 6 cycles) */
   const futureExp = allExp.filter(e => e.date > today);
@@ -1493,13 +1492,6 @@ function renderInsights() {
         : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
     </div>
 
-<div class="insight-sub">${brl(topClient[1])} total histórico</div>`
-        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
-    </div>
-
-<div class="insight-sub">${brl(topAcc[1])} total histórico</div>`
-        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
-    </div>
 
     <div class="insight-card">
       <div class="insight-label">Dias restantes no ciclo</div>
