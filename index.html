@@ -432,22 +432,38 @@ function saveExp(arr) {
   _recomputeCCS();
 }
 
-// CC SUMMARY recompute — preserves deleted entries, uses _persist not saveExp
+// CC SUMMARY recompute — uses same cycle range as getNavCycleRange (caps current cycle at today)
 function _recomputeCCS() {
-  const all     = DB.expenses;                          // full array, includes deleted
-  const real    = all.filter(e => !e.isCreditCardSummary); // strip old cc summaries only
-  const visible = real.filter(e => !e.deleted);         // live entries for computing totals
+  const all        = DB.expenses;
+  const real       = all.filter(e => !e.isCreditCardSummary); // strip old cc summaries only
+  const visible    = real.filter(e => !e.deleted);             // exclude soft-deleted
+  const today      = todayISO();
+  const currCsISO  = isoDate(cycleStart());                    // current cycle start (e.g. "2026-05-03")
 
-  const cycleMap = {};
+  // Group entries by cycle, using the SAME effective end as renderCartao/getNavCycleRange:
+  //   current cycle → cap at today  (matches Cartão page offset=0)
+  //   all other cycles → cap at 2nd of following month (full cycle)
+  const cycleEntries = {};
   for (const e of visible) {
-    if (e.paymentMethod === 'credit_card') {
-      const cs = isoDate(cycleStart(e.date));
-      cycleMap[cs] = (cycleMap[cs] || 0) + e.amount;
+    if (e.paymentMethod !== 'credit_card') continue;
+    const csDate      = cycleStart(e.date);
+    const csISO       = isoDate(csDate);
+    const cycleEnd2   = isoDate(new Date(csDate.getFullYear(), csDate.getMonth() + 1, 2));
+    const effectiveEnd = (csISO === currCsISO) ? today : cycleEnd2;
+    if (e.date <= effectiveEnd) {
+      if (!cycleEntries[csISO]) cycleEntries[csISO] = [];
+      cycleEntries[csISO].push(e);
     }
   }
+
+  const MONTHS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const newSums = [];
-  for (const [csISO, total] of Object.entries(cycleMap)) {
+  for (const [csISO, entries] of Object.entries(cycleEntries)) {
+    const total = entries.reduce((s, e) => s + e.amount, 0);
     if (total <= 0) continue;
+    const d = new Date(csISO + 'T12:00:00');
+    const lbl = MONTHS[d.getMonth()] + '/' + String(d.getFullYear()).slice(2);
+    console.log('CC Summary ' + lbl + ': summing ' + entries.length + ' entries, total R$' + total.toFixed(2));
     const sumDate = addMonths(csISO, 1);
     const [y, m] = sumDate.slice(0,7).split('-');
     newSums.push({ id:'cc_total_'+y+'_'+m, date:sumDate, segment:'Outros',
@@ -455,10 +471,9 @@ function _recomputeCCS() {
       paymentMethod:'pix', isRecurring:false, recurringEndDate:null,
       notes:'Cartão de Crédito', _groupId:'cc_total_'+y+'_'+m, isCreditCardSummary:true });
   }
-  // merged = real (keeps deleted entries) + fresh cc summaries
   const merged = [...real, ...newSums];
   if (JSON.stringify(merged) !== JSON.stringify(all)) {
-    _persist(merged); // direct persist — not saveExp (avoids recursion)
+    _persist(merged);
   }
 }
 // Public alias kept for external callers
