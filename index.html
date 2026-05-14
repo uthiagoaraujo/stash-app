@@ -237,6 +237,17 @@ select option{background:#111;color:#fff}
 .commit-bar{width:100%;background:#7D39EB;border-radius:3px 3px 0 0;min-height:2px}
 .commit-bar-lbl{font-size:9px;color:var(--muted);text-align:center;letter-spacing:0.02em}
 .sparkline-wrap{margin-top:8px;overflow:visible}
+/* ── HOME HERO ── */
+#section-home{padding:0 !important;overflow:hidden}
+.home-hero{min-height:calc(100vh - 60px);background:linear-gradient(135deg,#7D39EB 0%,#C6FF33 100%);background-size:200% 200%;animation:homeGrad 6s ease-in-out infinite alternate;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;gap:28px;box-sizing:border-box}
+@keyframes homeGrad{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+.home-hero-top{display:flex;flex-direction:column;align-items:center;gap:6px}
+.home-hero-name{font-size:2rem;font-weight:700;color:#fff;letter-spacing:-0.02em;line-height:1.1}
+.home-hero-sub{font-size:0.75rem;font-weight:300;color:rgba(255,255,255,0.55)}
+.home-hero-btn{background:#000;color:#fff;font-family:var(--font);font-size:1.3rem;font-weight:600;min-width:220px;min-height:80px;border:none;border-radius:16px;cursor:pointer;transition:opacity 150ms;letter-spacing:0.01em}
+.home-hero-btn:active{opacity:.82}
+.home-form-wrap{width:100%;max-width:400px}
+.home-form-wrap .form-card{margin-bottom:0}
 /* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
 .chart-wrap canvas{max-height:220px}
@@ -898,15 +909,17 @@ function weekRangeLabel(mondayISO) {
     ? `${mon.getDate()}–${sun.getDate()} ${MO[mon.getMonth()]}`
     : `${mon.getDate()} ${MO[mon.getMonth()]} – ${sun.getDate()} ${MO[sun.getMonth()]}`;
 }
-function buildExpListHtml(sorted, emptyMsg) {
+function buildExpListHtml(sorted, emptyMsg, noSep) {
   if (!sorted.length) return '<div class="empty-state">' + emptyMsg + '</div>';
   let html = '', lastWk = null;
   for (const e of sorted) {
-    const wk = getMondayISO(e.date);
-    if (lastWk !== null && wk !== lastWk)
-      html += '<div class="week-sep"><div class="week-sep-label">' + weekRangeLabel(wk) + '</div><div class="week-sep-line"></div></div>';
+    if (!noSep) {
+      const wk = getMondayISO(e.date);
+      if (lastWk !== null && wk !== lastWk)
+        html += '<div class="week-sep"><div class="week-sep-label">' + weekRangeLabel(wk) + '</div><div class="week-sep-line"></div></div>';
+      lastWk = wk;
+    }
     html += expenseEntryHtml(e);
-    lastWk = wk;
   }
   return html;
 }
@@ -1151,10 +1164,16 @@ function toggleSegCard(el) {
 function renderHome() {
   const el = document.getElementById('section-home');
   el.innerHTML =
-    '<div style="padding:8px 0 16px">' +
-    '<button class="btn-novo-cartao" onclick="toggleHomeForm()">' +
-    (S.homeFormOpen ? '✕ Fechar' : '+ Novo Gasto') + '</button>' +
-    (S.homeFormOpen ? expenseFormHtml(null) : '') +
+    '<div class="home-hero">' +
+    '<div class="home-hero-top">' +
+    '<svg xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 28.35 28.35"" width=""48"" height=""48""><rect width=""28.35"" height=""28.35"" fill=""#c6ff33"" rx=""4""/><circle cx=""14.17"" cy=""14.17"" r=""7.09"" fill=""#fff""/><path fill=""#7f3aef"" d=""M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z""/><path fill=""#7f3aef"" d=""M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z""/><path d=""M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z""/><path d=""M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z""/></svg>' +
+    '<div class="home-hero-name">Stash</div>' +
+    '<div class="home-hero-sub">by: uthiago</div>' +
+    '</div>' +
+    '<button class="home-hero-btn" onclick="toggleHomeForm()">' +
+    (S.homeFormOpen ? '✕ Fechar' : 'Novo Gasto') +
+    '</button>' +
+    (S.homeFormOpen ? '<div class="home-form-wrap">' + expenseFormHtml(null) + '</div>' : '') +
     '</div>';
 }
 function toggleHomeForm() {
@@ -1162,6 +1181,7 @@ function toggleHomeForm() {
   if (S.homeFormOpen) { S.gastoTipo = 'avista'; S.meioSelected = 'credit_card'; }
   renderHome();
 }
+
 
 /* ─── EXPENSE FORM ─── */
 function expenseFormHtml(lockedMethod) {
@@ -1441,11 +1461,11 @@ function renderPix() {
   if (S.expandedSegCard) {
     const segExp = allExp.filter(e => e.segment===S.expandedSegCard).sort((a,b)=>b.date.localeCompare(a.date));
     expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(S.expandedSegCard) + '</div>' +
-      buildExpListHtml(segExp, 'Sem gastos.') + '</div>';
+      buildExpListHtml(segExp, 'Sem gastos.', true) + '</div>';
   }
   const showMainList = !S.expandedSegCard;
   const sorted = showMainList ? applySortList(expenses, S.pixSort) : [];
-  const list   = showMainList ? buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.') : '';
+  const list   = showMainList ? buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.', true) : '';
   const projTag = navR.isFuture ? '<span class="proj-tag">projeção</span>' : '';
 
   el.innerHTML =
