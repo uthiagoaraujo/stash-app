@@ -188,6 +188,8 @@ select option{background:#111;color:#fff}
 .week-sep{padding:14px 0 6px}
 .week-sep-label{display:block;font-size:0.7rem;font-weight:300;color:#C6FF33;font-family:var(--font);margin-bottom:6px;letter-spacing:0.02em}
 .week-sep-line{width:100%;height:1px;background:#C6FF33;opacity:0.6}
+.btn-add-gasto{width:100%;padding:14px;background:#7D39EB;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:16px;transition:opacity 150ms;display:block}
+.btn-add-gasto:active{opacity:.82}
 /* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
 .chart-wrap canvas{max-height:220px}
@@ -323,7 +325,7 @@ const S = {
   pendingGroupEdit: null,
   pendingDeleteRecurring: null,
   homeSort: 'date-desc', homeSeg: null, expandedSegCard: null,
-  gastosSort: 'date-desc', gastosSegFilter: null, gastosNavOffset: 0,
+  gastosSort: 'date-desc', gastosSegFilter: null, gastosNavOffset: 0, gastosFormOpen: false,
   fatSort:    'date-desc', fatAccFilter: null,    fatNavOffset: 0,
 };
 // ════════════════════════════════════════════════════
@@ -1114,8 +1116,14 @@ function gastosFormHtml() {
         </div>
       </div>
       <div id="g-parc-wrap" style="display:${tipo==='parc'?'block':'none'};margin-top:10px">
-        <label class="form-label">Número de parcelas</label>
-        <input type="number" id="g-parcelas" min="2" max="99" placeholder="Ex: 12">
+        <div class="form-group">
+          <label class="form-label">Número de parcelas</label>
+          <input type="number" id="g-parcelas" min="2" max="99" placeholder="Ex: 12">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Parcela inicial</label>
+          <input type="number" id="g-parcela-inicial" min="1" max="99" placeholder="1">
+        </div>
       </div>
       <div id="g-rec-wrap" style="display:${tipo==='rec'?'block':'none'};margin-top:10px">
         <label class="form-label">Termina em (opcional)</label>
@@ -1160,10 +1168,12 @@ function submitGasto(ev) {
   const newExps = [];
 
   if (tipo === 'parc') {
-    const pRaw    = parseInt((document.getElementById('g-parcelas') || {}).value, 10);
+    const pRaw     = parseInt((document.getElementById('g-parcelas') || {}).value, 10);
     const parcelas = (!pRaw || pRaw < 2) ? 2 : Math.min(pRaw, 99);
-    for (let k = 1; k <= parcelas; k++) {
-      newExps.push({ id:uid(), date:addMonths(date,k-1), segment, amount:valor,
+    const iRaw     = parseInt((document.getElementById('g-parcela-inicial') || {}).value, 10);
+    const inicial  = (!iRaw || iRaw < 1) ? 1 : Math.min(iRaw, parcelas);
+    for (let k = inicial; k <= parcelas; k++) {
+      newExps.push({ id:uid(), date:addMonths(date, k - inicial), segment, amount:valor,
         installments:parcelas, currentInstallment:k, paymentMethod:S.meioSelected,
         isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
     }
@@ -1179,7 +1189,8 @@ function submitGasto(ev) {
 
   saveExp([...loadExp(), ...newExps]);
   S.homeTab = null; S.gastoTipo = 'avista'; S.meioSelected = 'credit_card';
-  renderHome();
+  if (S.section === 'gastos') { S.gastosFormOpen = false; renderSection('gastos'); }
+  else renderHome();
 }
 /* ─── FATURAMENTOS FORM ─── */
 function selectFatTipo(tipo) {
@@ -1305,6 +1316,11 @@ function exportHomeCycle() {
   doExportGastos(loadExp().filter(e => e.date >= cs && e.date <= today), 'ciclo-atual');
 }
 
+function toggleGastosForm() {
+  S.gastosFormOpen = !S.gastosFormOpen;
+  if (S.gastosFormOpen) { S.gastoTipo = 'avista'; S.meioSelected = 'credit_card'; }
+  renderSection('gastos');
+}
 // ════════════════════════════════════════════════════
 // SECTION 2 — GASTOS (analysis)
 // ════════════════════════════════════════════════════
@@ -1353,6 +1369,8 @@ function renderGastos() {
 
   el.innerHTML =
     '<h1 class="section-title">Gastos</h1>' +
+    '<button class="btn-add-gasto" onclick="toggleGastosForm()">' + (S.gastosFormOpen ? '✕ Fechar' : '+ Novo Gasto') + '</button>' +
+    (S.gastosFormOpen ? '<div class="form-wrap" style="margin-bottom:16px">' + gastosFormHtml() + '</div>' : '') +
     '<div class="month-nav"><div class="month-nav-arrows"><button class="month-nav-btn" onclick="navMonth(\'gastos\',-1)">&#8249;</button><span class="month-nav-label">' + navR.label + '</span><button class="month-nav-btn" onclick="navMonth(\'gastos\',1)">&#8250;</button></div><div class="month-nav-total">' + brl(totalGasto) + '</div></div>' +
     (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
 
