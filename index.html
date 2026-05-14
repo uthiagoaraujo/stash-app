@@ -31,8 +31,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:
 .section.visible{opacity:1}
 
 /* ── BOTTOM NAV ── */
-#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#000;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;padding:6px 0 10px;z-index:100}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 6px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:0.02em;transition:color 150ms;user-select:none;border:none;background:none;flex:1;min-width:0}
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#000;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;padding:6px 0 10px;z-index:100;overflow:hidden}
+#bottom-nav::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(125,57,235,0.3),rgba(198,255,51,0.3));opacity:0;animation:navPulse 4s ease-in-out infinite alternate;pointer-events:none;z-index:0}
+@keyframes navPulse{0%{opacity:0}100%{opacity:1}}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 6px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:0.02em;transition:color 150ms;user-select:none;border:none;background:none;flex:1;min-width:0;position:relative;z-index:1}
 .nav-item.active{color:var(--lime)}
 .nav-item svg{width:20px;height:20px;flex-shrink:0}
 
@@ -112,6 +114,35 @@ select option{background:#111;color:#fff}
 .edit-actions{display:flex;gap:8px;margin-top:14px}
 .btn-del{background:transparent;border:1px solid rgba(255,77,77,0.35);color:#ff4d4d;padding:11px 20px;border-radius:6px;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:opacity 150ms;flex-shrink:0}
 .btn-del:hover{opacity:.8}
+
+/* ── SORT BAR ── */
+.sort-bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:16px}
+.sort-bar::-webkit-scrollbar{display:none}
+.sort-btn{flex:0 0 auto;padding:5px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:16px;background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;transition:all 150ms;white-space:nowrap}
+.sort-btn.active{border-color:rgba(255,255,255,0.55);color:#fff}
+.sort-btn:hover:not(.active){color:rgba(255,255,255,.6)}
+
+/* ── FILTER TAGS ── */
+.filter-tags{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:16px}
+.filter-tags::-webkit-scrollbar{display:none}
+.filter-tag{flex:0 0 auto;padding:5px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:16px;background:transparent;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;transition:all 150ms;white-space:nowrap}
+.filter-tag.active-lime{border-color:var(--lime);color:#000;background:var(--lime);font-weight:600}
+.filter-tag:hover:not(.active-lime){color:rgba(255,255,255,.7)}
+
+/* ── MINI BAR LIST (Insights commitments) ── */
+.mini-bar-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.mini-bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.mini-bar-label{width:52px;flex-shrink:0;color:var(--muted);font-size:11px}
+.mini-bar-track{flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+.mini-bar-fill{height:100%;background:var(--accent);border-radius:2px;min-width:2px;transition:width 300ms ease}
+.mini-bar-val{min-width:82px;text-align:right;font-weight:500;font-size:12px}
+
+/* ── INSIGHT TABLE ── */
+.insight-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+.insight-table td{padding:6px 0;vertical-align:middle}
+.insight-table td:first-child{color:var(--muted)}
+.insight-table td:last-child{text-align:right;font-weight:500}
+.insight-table tr+tr td{border-top:1px solid rgba(255,255,255,0.06)}
 
 /* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
@@ -243,6 +274,9 @@ const S = {
   fatPeriod:    'month', fatFrom:    '', fatTo:    '',
   balancoPeriod:'month', balancoFrom:'', balancoTo: '',
   expandedEntry: null,   // { type: 'exp'|'inc', id: string }
+  homeSort: 'date-desc', homeSeg: null,
+  gastosSort: 'date-desc', gastosSegFilter: null,
+  fatSort: 'date-desc',    fatAccFilter: null,
 };
 const CI = {}; // active Chart.js instances keyed by canvas id
 
@@ -288,7 +322,7 @@ function lastNCycles(n) {
     return {
       start: isoDate(s),
       end:   isoDate(e),
-      label: s.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+      label: fmtCycleLabel(isoDate(s))
     };
   });
 }
@@ -376,6 +410,52 @@ const brl = n => Number(n).toLocaleString('pt-BR', { style: 'currency', currency
 const fmtDate  = iso => iso ? iso.split('-').reverse().join('/')  : '';
 const fmtShort = iso => { if (!iso) return ''; const [,m,d] = iso.split('-'); return `${d}/${m}`; };
 const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+const MONTH_SHORT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function fmtCycleLabel(isoStart) {
+  const d = new Date(isoStart + 'T12:00:00');
+  return `${MONTH_SHORT[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
+}
+
+function applySortList(arr, sortKey) {
+  const r = [...arr];
+  if (sortKey === 'date-asc')  r.sort((a,b) => a.date.localeCompare(b.date));
+  if (sortKey === 'date-desc') r.sort((a,b) => b.date.localeCompare(a.date));
+  if (sortKey === 'val-asc')   r.sort((a,b) => a.amount - b.amount);
+  if (sortKey === 'val-desc')  r.sort((a,b) => b.amount - a.amount);
+  return r;
+}
+
+function buildSortBar(stateKey) {
+  const cur = S[stateKey];
+  return `<div class="sort-bar">${[
+    ['date-desc','Data ↓'],['date-asc','Data ↑'],
+    ['val-desc','Valor ↓'],['val-asc','Valor ↑']
+  ].map(([k,l]) =>
+    `<button class="sort-btn${cur===k?' active':''}" onclick="setSort('${stateKey}','${k}')">${l}</button>`
+  ).join('')}</div>`;
+}
+
+function setSort(stateKey, val) {
+  S[stateKey] = val;
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
+
+function buildFilterTags(stateKey, items) {
+  const cur = S[stateKey];
+  return `<div class="filter-tags">${items.map(({label, value}) => {
+    const active = value === null ? !cur : cur === value;
+    const call   = value === null ? `setFilter('${stateKey}',null)` : `setFilter('${stateKey}','${value.replace(/'/g,"\\'")}')`;
+    return `<button class="filter-tag${active?' active-lime':''}" onclick="${call}">${esc(label)}</button>`;
+  }).join('')}</div>`;
+}
+
+function setFilter(stateKey, val) {
+  S[stateKey] = val || null;
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
 
 // ════════════════════════════════════════════════════
 // CHART HELPERS
@@ -887,19 +967,27 @@ function submitFaturamento(ev) {
 function homeSummaryHtml() {
   const cs      = isoDate(cycleStart());
   const today   = todayISO();
-  const expenses = loadExp().filter(e => e.date >= cs && e.date <= today);
+  const allCycleExp = loadExp().filter(e => e.date >= cs && e.date <= today);
 
   const totals = {};
   SEGMENTS.forEach(s => totals[s] = 0);
-  expenses.forEach(e => { if (totals[e.segment] !== undefined) totals[e.segment] += e.amount; });
+  allCycleExp.forEach(e => { if (totals[e.segment] !== undefined) totals[e.segment] += e.amount; });
 
-  const cards = SEGMENTS.map(s => `
+  // Cards sorted descending by spend
+  const sortedSegs = [...SEGMENTS].sort((a,b) => totals[b] - totals[a]);
+  const cards = sortedSegs.map(s => `
     <div class="seg-card">
       <div class="seg-card-name">${esc(s)}</div>
       <div class="seg-card-amount">${brl(totals[s])}</div>
     </div>`).join('');
 
-  const sorted = [...expenses].sort((a,b) => b.date.localeCompare(a.date));
+  // Filter tags (only segments with spend)
+  const usedSegs = sortedSegs.filter(s => totals[s] > 0);
+  const filterItems = [{label:'Todos',value:null}, ...usedSegs.map(s => ({label:s,value:s}))];
+
+  // Apply segment filter then sort
+  const filtered = S.homeSeg ? allCycleExp.filter(e => e.segment === S.homeSeg) : allCycleExp;
+  const sorted   = applySortList(filtered, S.homeSort);
 
   const list = sorted.length === 0
     ? '<div class="empty-state">Nenhum gasto registrado este ciclo.</div>'
@@ -909,6 +997,8 @@ function homeSummaryHtml() {
     <div class="cards-scroll">${cards}</div>
     <hr class="divider">
     <div class="list-header">Gastos do ciclo atual</div>
+    ${buildFilterTags('homeSeg', filterItems)}
+    ${buildSortBar('homeSort')}
     <div class="entry-list">${list}</div>
     <div class="export-row">
       <button class="btn btn-export" onclick="exportHomeCycle()">↓ Exportar Excel</button>
@@ -927,20 +1017,33 @@ function exportHomeCycle() {
 function renderGastos() {
   const el = document.getElementById('section-gastos');
   const { start, end } = getPeriodRange(S.gastosPeriod, S.gastosFrom, S.gastosTo);
-  const expenses = loadExp().filter(e => e.date >= start && e.date <= end);
+  const allPeriodExp = loadExp().filter(e => e.date >= start && e.date <= end);
 
-  // Segment distribution
+  // Totals for filter tags (unfiltered)
   const segTotals = {};
   SEGMENTS.forEach(s => segTotals[s] = 0);
-  expenses.forEach(e => { if (segTotals[e.segment] !== undefined) segTotals[e.segment] += e.amount; });
+  allPeriodExp.forEach(e => { if (segTotals[e.segment] !== undefined) segTotals[e.segment] += e.amount; });
   const usedSegs = SEGMENTS.filter(s => segTotals[s] > 0);
+  const filterItems = [{label:'Todos',value:null}, ...usedSegs.map(s => ({label:s,value:s}))];
 
-  // Last 6 cycles bar
+  // Apply segment filter
+  const segF     = S.gastosSegFilter;
+  const expenses = segF ? allPeriodExp.filter(e => e.segment === segF) : allPeriodExp;
+
+  // Historical bar (filtered)
   const allExp   = loadExp();
   const cycles   = lastNCycles(6);
-  const cycleAmt = cycles.map(c => allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((s,e) => s+e.amount, 0));
+  const cycleAmt = cycles.map(c => allExp
+    .filter(e => e.date >= c.start && e.date <= c.end && (!segF || e.segment === segF))
+    .reduce((s,e) => s+e.amount, 0));
 
-  const sorted = [...expenses].sort((a,b) => b.date.localeCompare(a.date));
+  // Doughnut data (filtered)
+  const filtSegTotals = {};
+  SEGMENTS.forEach(s => filtSegTotals[s] = 0);
+  expenses.forEach(e => { if (filtSegTotals[e.segment] !== undefined) filtSegTotals[e.segment] += e.amount; });
+  const filtUsedSegs = SEGMENTS.filter(s => filtSegTotals[s] > 0);
+
+  const sorted = applySortList(expenses, S.gastosSort);
   const list = sorted.length === 0
     ? '<div class="empty-state">Nenhum gasto no período selecionado.</div>'
     : sorted.map(e => expenseEntryHtml(e)).join('');
@@ -948,26 +1051,27 @@ function renderGastos() {
   el.innerHTML = `
     <h1 class="section-title">Gastos</h1>
     ${buildPeriodFilters('gastosPeriod','gastosFrom','gastosTo')}
-    ${usedSegs.length > 0 ? `
+    ${buildFilterTags('gastosSegFilter', filterItems)}
+    ${filtUsedSegs.length > 0 ? `
       <div class="chart-title">Distribuição por segmento</div>
       <div class="chart-wrap" style="height:240px"><canvas id="chart-g-donut"></canvas></div>` : ''}
     <div class="chart-title">Histórico por ciclo</div>
     <div class="chart-wrap" style="height:180px"><canvas id="chart-g-bar"></canvas></div>
     <hr class="divider">
     <div class="list-header">Todos os gastos</div>
+    ${buildSortBar('gastosSort')}
     <div class="entry-list">${list}</div>
     <div class="export-row">
       <button class="btn btn-export" onclick="exportGastosSection()">↓ Exportar Excel</button>
     </div>`;
 
-  if (usedSegs.length > 0) {
+  if (filtUsedSegs.length > 0) {
     mkChart('chart-g-donut', 'doughnut', {
-      labels: usedSegs,
+      labels: filtUsedSegs,
       datasets: [{
-        data: usedSegs.map(s => segTotals[s]),
-        backgroundColor: CHART_COLORS.slice(0, usedSegs.length),
-        borderWidth: 0,
-        hoverOffset: 4
+        data: filtUsedSegs.map(s => filtSegTotals[s]),
+        backgroundColor: CHART_COLORS.slice(0, filtUsedSegs.length),
+        borderWidth: 0, hoverOffset: 4
       }]
     }, { cutout: '55%' });
   }
@@ -990,13 +1094,19 @@ function exportGastosSection() {
 function renderFaturamentos() {
   const el = document.getElementById('section-faturamentos');
   const { start, end } = getPeriodRange(S.fatPeriod, S.fatFrom, S.fatTo);
-  const income = loadInc().filter(i => i.date >= start && i.date <= end);
+  const allPeriodInc = loadInc().filter(i => i.date >= start && i.date <= end);
 
   const accTotals = {};
   ACCOUNTS.forEach(a => accTotals[a] = 0);
-  income.forEach(i => { if (accTotals[i.account] !== undefined) accTotals[i.account] += i.amount; });
+  allPeriodInc.forEach(i => { if (accTotals[i.account] !== undefined) accTotals[i.account] += i.amount; });
+  const usedAccs = ACCOUNTS.filter(a => accTotals[a] > 0);
+  const filterItems = [{label:'Todos',value:null}, ...usedAccs.map(a => ({label:a,value:a}))];
 
-  const sorted = [...income].sort((a,b) => b.date.localeCompare(a.date));
+  // Apply account filter
+  const accF   = S.fatAccFilter;
+  const income = accF ? allPeriodInc.filter(i => i.account === accF) : allPeriodInc;
+
+  const sorted = applySortList(income, S.fatSort);
   const list = sorted.length === 0
     ? '<div class="empty-state">Nenhum faturamento no período selecionado.</div>'
     : sorted.map(i => incomeEntryHtml(i)).join('');
@@ -1004,18 +1114,21 @@ function renderFaturamentos() {
   el.innerHTML = `
     <h1 class="section-title">Faturamentos</h1>
     ${buildPeriodFilters('fatPeriod','fatFrom','fatTo')}
+    ${buildFilterTags('fatAccFilter', filterItems)}
     <div class="chart-title">Total por conta</div>
     <div class="chart-wrap" style="height:180px"><canvas id="chart-f-bar"></canvas></div>
     <hr class="divider">
     <div class="list-header">Todos os faturamentos</div>
+    ${buildSortBar('fatSort')}
     <div class="entry-list">${list}</div>
     <div class="export-row">
       <button class="btn btn-export" onclick="exportFatSection()">↓ Exportar Excel</button>
     </div>`;
 
+  const chartData = ACCOUNTS.map(a => accF ? (a === accF ? accTotals[a] : 0) : accTotals[a]);
   mkChart('chart-f-bar', 'bar', {
     labels: ACCOUNTS,
-    datasets: [{ data: ACCOUNTS.map(a => accTotals[a]), backgroundColor: '#7D39EB', borderRadius: 3, borderSkipped: false }]
+    datasets: [{ data: chartData, backgroundColor: '#7D39EB', borderRadius: 3, borderSkipped: false }]
   }, { scales: { x: { ticks: { font: { size: 9 } } } } });
 }
 
@@ -1147,61 +1260,100 @@ function renderInsights() {
   const cs     = isoDate(cycleStart());
   const today  = todayISO();
   const allExp = loadExp();
+  const allInc = loadInc();
 
-  /* 1. Top segment this cycle */
-  const cycleExp   = allExp.filter(e => e.date >= cs && e.date <= today);
-  const cycleTotal = cycleExp.reduce((s,e) => s+e.amount, 0);
+  /* cycle data */
+  const cycleExp      = allExp.filter(e => e.date >= cs && e.date <= today);
+  const cycleTotal    = cycleExp.reduce((s,e) => s+e.amount, 0);
+  const cycleInc      = allInc.filter(i => i.date >= cs && i.date <= today);
+  const cycleIncTotal = cycleInc.reduce((s,i) => s+i.amount, 0);
+
+  /* 1. Segmento líder */
   let topSeg = null;
   if (cycleTotal > 0) {
     const byS = {};
     SEGMENTS.forEach(s => byS[s] = 0);
     cycleExp.forEach(e => { if (byS[e.segment] !== undefined) byS[e.segment] += e.amount; });
     const [name, amt] = Object.entries(byS).sort((a,b) => b[1]-a[1])[0];
-    if (amt > 0) topSeg = { name, amt, pct: Math.round(amt / cycleTotal * 100) };
+    if (amt > 0) topSeg = { name, amt, pct: Math.round(amt/cycleTotal*100) };
   }
 
-  /* 2. Future commitments — next 6 billing cycles */
+  /* 2. Maior gasto único */
+  const topSingle = cycleExp.length > 0
+    ? cycleExp.reduce((best,e) => e.amount > best.amount ? e : best, cycleExp[0])
+    : null;
+
+  /* 3. Média diária */
+  const csDate   = new Date(cs + 'T12:00:00');
+  const todayD   = new Date(today + 'T12:00:00');
+  const daysElapsed = Math.max(1, Math.round((todayD - csDate)/(864e5)) + 1);
+  const avgDaily = cycleTotal / daysElapsed;
+
+  /* 4. Relação receita/gasto */
+  const relacao = cycleIncTotal > 0 ? Math.round(cycleTotal/cycleIncTotal*100) : null;
+
+  /* 5. Comprometimento futuro (next 6 cycles) */
   const futureExp = allExp.filter(e => e.date > today);
   const cs0 = cycleStart();
   const commitments = [];
+  let maxCommit = 0;
   for (let i = 1; i <= 6; i++) {
-    const ms    = new Date(cs0.getFullYear(), cs0.getMonth() + i, 3);
-    const me    = new Date(cs0.getFullYear(), cs0.getMonth() + i + 1, 2);
+    const ms    = new Date(cs0.getFullYear(), cs0.getMonth()+i, 3);
+    const me    = new Date(cs0.getFullYear(), cs0.getMonth()+i+1, 2);
     const msISO = isoDate(ms), meISO = isoDate(me);
-    const total = futureExp
-      .filter(e => e.date >= msISO && e.date <= meISO)
-      .reduce((s,e) => s+e.amount, 0);
-    commitments.push({ label: ms.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }), total });
+    const total = futureExp.filter(e => e.date >= msISO && e.date <= meISO).reduce((s,e) => s+e.amount, 0);
+    commitments.push({ label: fmtCycleLabel(msISO), total });
+    if (total > maxCommit) maxCommit = total;
   }
 
-  /* 3. Average of last 3 cycles */
-  const avg3 = allExp.length > 0
-    ? lastNCycles(3).reduce((s,c) =>
-        s + allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((ss,e) => ss+e.amount, 0), 0) / 3
-    : 0;
-
-  /* 4. Most expensive cycle (all time) */
-  let mostExp = null;
+  /* 6. Mês com maior gasto histórico */
+  let mostExpCycle = null;
   if (allExp.length > 0) {
-    const byCycle = {};
-    for (const e of allExp) {
-      const k = isoDate(cycleStart(e.date));
-      byCycle[k] = (byCycle[k] || 0) + e.amount;
-    }
-    const [k, v] = Object.entries(byCycle).sort((a,b) => b[1]-a[1])[0];
-    mostExp = {
-      label: new Date(k + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      total: v
-    };
+    const by = {};
+    allExp.forEach(e => { const k=isoDate(cycleStart(e.date)); by[k]=(by[k]||0)+e.amount; });
+    const [k,v] = Object.entries(by).sort((a,b) => b[1]-a[1])[0];
+    mostExpCycle = { label: fmtCycleLabel(k), total: v };
   }
 
-  const commitHtml = commitments.some(c => c.total > 0)
-    ? commitments.map(c => `
-        <div class="commitment-row">
-          <span>${esc(c.label)}</span>
-          <span class="${c.total > 0 ? 'c-amount' : 'c-zero'}">${brl(c.total)}</span>
-        </div>`).join('')
+  /* 7. Mês com maior receita histórica */
+  let mostIncCycle = null;
+  if (allInc.length > 0) {
+    const by = {};
+    allInc.forEach(i => { const k=isoDate(cycleStart(i.date)); by[k]=(by[k]||0)+i.amount; });
+    const [k,v] = Object.entries(by).sort((a,b) => b[1]-a[1])[0];
+    mostIncCycle = { label: fmtCycleLabel(k), total: v };
+  }
+
+  /* 8. Sequência de dias sem gastos */
+  const expDates = new Set(allExp.map(e => e.date));
+  let streak = 0;
+  for (let d = new Date(todayD); streak <= 365; d.setDate(d.getDate()-1)) {
+    if (expDates.has(isoDate(d))) break;
+    streak++;
+  }
+
+  /* 9. Gasto médio por segmento — últimos 3 ciclos */
+  const cycles3  = lastNCycles(3);
+  const segAvgs  = SEGMENTS.map(seg => {
+    const tot = cycles3.reduce((s,c) =>
+      s + allExp.filter(e => e.date>=c.start && e.date<=c.end && e.segment===seg).reduce((ss,e)=>ss+e.amount,0), 0);
+    return { seg, avg: tot/3 };
+  }).filter(x => x.avg > 0).sort((a,b) => b.avg-a.avg);
+
+  /* ── HTML ── */
+  const commitBarHtml = maxCommit > 0
+    ? `<div class="mini-bar-list">${commitments.map(c => `
+        <div class="mini-bar-row">
+          <div class="mini-bar-label">${c.label}</div>
+          <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.max(2,Math.round(c.total/maxCommit*100))}%"></div></div>
+          <div class="mini-bar-val">${c.total > 0 ? brl(c.total) : '<span class="c-zero">—</span>'}</div>
+        </div>`).join('')}</div>`
     : '<p style="color:var(--muted);font-size:13px;margin:8px 0 0">Sem parcelas futuras registradas.</p>';
+
+  const segAvgHtml = segAvgs.length > 0
+    ? `<table class="insight-table">${segAvgs.map(x =>
+        `<tr><td>${esc(x.seg)}</td><td>${brl(x.avg)}</td></tr>`).join('')}</table>`
+    : '<p style="color:var(--muted);font-size:13px;margin:6px 0 0">Sem dados suficientes.</p>';
 
   el.innerHTML = `
     <h1 class="section-title">Insights</h1>
@@ -1209,28 +1361,58 @@ function renderInsights() {
     <div class="insight-card">
       <div class="insight-label">Segmento líder — ciclo atual</div>
       ${topSeg
-        ? `<div class="insight-value">${esc(topSeg.name)}</div>
-           <div class="insight-sub">${brl(topSeg.amt)} · ${topSeg.pct}% do total do ciclo</div>`
+        ? `<div class="insight-value">${esc(topSeg.name)}</div><div class="insight-sub">${brl(topSeg.amt)} · ${topSeg.pct}% do total</div>`
         : '<div class="insight-sub" style="margin-top:4px">Sem gastos registrados este ciclo.</div>'}
     </div>
 
     <div class="insight-card">
+      <div class="insight-label">Maior gasto único — ciclo atual</div>
+      ${topSingle
+        ? `<div class="insight-value">${brl(topSingle.amount)}</div><div class="insight-sub">${topSingle.notes ? esc(topSingle.notes) : esc(topSingle.segment)} · ${fmtDate(topSingle.date)}</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem gastos registrados este ciclo.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Média diária de gastos — ciclo atual</div>
+      <div class="insight-value">${cycleTotal > 0 ? brl(avgDaily) : '—'}</div>
+      ${cycleTotal > 0 ? `<div class="insight-sub">${daysElapsed} dias decorridos no ciclo</div>` : ''}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Relação receita / gasto — ciclo atual</div>
+      ${relacao !== null
+        ? `<div class="insight-value">${relacao}%</div><div class="insight-sub">do faturamento comprometido em gastos</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem receitas registradas este ciclo.</div>'}
+    </div>
+
+    <div class="insight-card">
       <div class="insight-label">Comprometimento futuro — próximos 6 ciclos</div>
-      <div class="commitment-list">${commitHtml}</div>
+      ${commitBarHtml}
     </div>
 
     <div class="insight-card">
-      <div class="insight-label">Média mensal de gastos — últimos 3 ciclos</div>
-      <div class="insight-value">${avg3 > 0 ? brl(avg3) : '—'}</div>
-      ${avg3 > 0 ? `<div class="insight-sub">Média dos últimos 3 ciclos</div>` : ''}
-    </div>
-
-    <div class="insight-card">
-      <div class="insight-label">Ciclo mais caro</div>
-      ${mostExp
-        ? `<div class="insight-value">${brl(mostExp.total)}</div>
-           <div class="insight-sub">${esc(mostExp.label)}</div>`
+      <div class="insight-label">Mês com maior gasto histórico</div>
+      ${mostExpCycle
+        ? `<div class="insight-value">${brl(mostExpCycle.total)}</div><div class="insight-sub">${esc(mostExpCycle.label)}</div>`
         : '<div class="insight-sub" style="margin-top:4px">Sem dados suficientes.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Mês com maior receita histórica</div>
+      ${mostIncCycle
+        ? `<div class="insight-value positive">${brl(mostIncCycle.total)}</div><div class="insight-sub">${esc(mostIncCycle.label)}</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados suficientes.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Sequência atual sem gastos</div>
+      <div class="insight-value">${streak} ${streak === 1 ? 'dia' : 'dias'}</div>
+      <div class="insight-sub">${streak > 0 ? 'dias consecutivos sem nenhum gasto' : 'há gastos registrados hoje'}</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Gasto médio por segmento — últimos 3 ciclos</div>
+      ${segAvgHtml}
     </div>
 
     <div class="locked-card">
