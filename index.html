@@ -42,10 +42,14 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:
 
 /* -- HOME BUTTONS -- */
 .home-action-btns{display:flex;flex-direction:column;gap:16px;padding:8px 0}
-.home-btn{width:100%;padding:28px 20px;border:none;border-radius:10px;font-family:var(--font);font-size:1.4rem;font-weight:600;cursor:pointer;letter-spacing:0.01em;transition:opacity 150ms}
+.home-btn{width:100%;min-height:88px;padding:22px 24px;border:none;border-radius:12px;font-family:var(--font);cursor:pointer;transition:opacity 150ms;text-align:left;display:flex;align-items:center;gap:20px}
 .home-btn:active{opacity:.82}
 .home-btn-gasto{background:#7D39EB;color:#fff}
 .home-btn-fat{background:#C6FF33;color:#000}
+.home-btn-icon{font-size:2.2rem;font-weight:300;line-height:1;flex-shrink:0;opacity:.9}
+.home-btn-content{display:flex;flex-direction:column;gap:3px}
+.home-btn-label{font-size:1.5rem;font-weight:600;line-height:1.2}
+.home-btn-desc{font-size:0.85rem;font-weight:300;opacity:0.6}
 /* -- TOTAL CARD -- */
 .total-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:20px}
 .total-card-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
@@ -158,7 +162,9 @@ select option{background:#111;color:#fff}
 .insight-table tr+tr td{border-top:1px solid rgba(255,255,255,0.06)}
 
 /* -- MONTH NAV -- */
-.month-nav{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;padding:4px 0}
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:4px 0}
+.month-nav-arrows{display:flex;align-items:center;gap:12px}
+.month-nav-total{font-size:16px;font-weight:600;letter-spacing:-0.01em}
 .month-nav-btn{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;line-height:1;transition:all 150ms;flex-shrink:0;padding:0}
 .month-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
 .month-nav-label{font-size:16px;font-weight:600;min-width:64px;text-align:center}
@@ -890,12 +896,17 @@ function renderHome() {
   let formHtml = '';
   if      (tab === 'gastos')       formHtml = '<div class="form-wrap">' + gastosFormHtml() + '</div>';
   else if (tab === 'faturamentos') formHtml = '<div class="form-wrap">' + faturamentosFormHtml() + '</div>';
-  el.innerHTML = `
-    <div class="home-action-btns">
-      <button class="home-btn home-btn-gasto" onclick="toggleHomeTab('gastos')">Gasto</button>
-      <button class="home-btn home-btn-fat"   onclick="toggleHomeTab('faturamentos')">Faturamento</button>
-    </div>
-    ${formHtml}`;
+  el.innerHTML =
+    '<div class="home-action-btns">' +
+    '<button class="home-btn home-btn-gasto" onclick="toggleHomeTab(\'gastos\')">' +
+    '<span class="home-btn-icon">−</span>' +
+    '<span class="home-btn-content"><span class="home-btn-label">Novo Gasto</span><span class="home-btn-desc">registrar uma despesa</span></span>' +
+    '</button>' +
+    '<button class="home-btn home-btn-fat" onclick="toggleHomeTab(\'faturamentos\')">' +
+    '<span class="home-btn-icon">+</span>' +
+    '<span class="home-btn-content"><span class="home-btn-label">Novo Faturamento</span><span class="home-btn-desc">registrar uma receita</span></span>' +
+    '</button></div>' +
+    formHtml;
 }
 
 function toggleHomeTab(tab) {
@@ -1097,9 +1108,7 @@ function homeSummaryHtml() {
     ${buildFilterTags('homeSeg', filterItems)}
     ${buildSortBar('homeSort')}
     <div class="entry-list">${list}</div>
-    <div class="export-row">
-      <button class="btn btn-export" onclick="exportHomeCycle()">↓ Exportar Excel</button>
-    </div>`;
+`;
 }
 
 function exportHomeCycle() {
@@ -1156,11 +1165,8 @@ function renderGastos() {
 
   el.innerHTML =
     '<h1 class="section-title">Gastos</h1>' +
-    '<div class="month-nav"><button class="month-nav-btn" onclick="navMonth(\'gastos\',-1)">&#8249;</button>' +
-    '<span class="month-nav-label">' + navR.label + '</span>' +
-    '<button class="month-nav-btn" onclick="navMonth(\'gastos\',1)">&#8250;</button></div>' +
+    '<div class="month-nav"><div class="month-nav-arrows"><button class="month-nav-btn" onclick="navMonth(\'gastos\',-1)">&#8249;</button><span class="month-nav-label">' + navR.label + '</span><button class="month-nav-btn" onclick="navMonth(\'gastos\',1)">&#8250;</button></div><div class="month-nav-total">' + brl(totalGasto) + '</div></div>' +
     (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
-    '<div class="total-card"><div class="total-card-label">Total gasto</div><div class="total-card-value">' + brl(totalGasto) + '</div></div>' +
     buildFilterTags('gastosSegFilter', filterItems) +
     '<div class="cards-scroll">' + segCards + '</div>' +
     expandedCardHtml +
@@ -1170,7 +1176,7 @@ function renderGastos() {
     '<div class="list-header">Todos os gastos</div>' +
     buildSortBar('gastosSort') +
     '<div class="entry-list">' + list + '</div>' +
-    '<div class="export-row"><button class="btn btn-export" onclick="exportGastosSection()">&#8595; Exportar Excel</button></div>';
+    '';
 
   if (filtUsedSegs.length > 0) {
     mkChart('chart-g-donut', 'doughnut', {
@@ -1214,11 +1220,8 @@ function renderFaturamentos() {
 
   el.innerHTML =
     '<h1 class="section-title">Faturamentos</h1>' +
-    '<div class="month-nav"><button class="month-nav-btn" onclick="navMonth(\'fat\',-1)">&#8249;</button>' +
-    '<span class="month-nav-label">' + navR.label + '</span>' +
-    '<button class="month-nav-btn" onclick="navMonth(\'fat\',1)">&#8250;</button></div>' +
+    '<div class="month-nav"><div class="month-nav-arrows"><button class="month-nav-btn" onclick="navMonth(\'fat\',-1)">&#8249;</button><span class="month-nav-label">' + navR.label + '</span><button class="month-nav-btn" onclick="navMonth(\'fat\',1)">&#8250;</button></div><div class="month-nav-total positive">' + brl(totalRec) + '</div></div>' +
     (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
-    '<div class="total-card"><div class="total-card-label">Total recebido</div><div class="total-card-value positive">' + brl(totalRec) + '</div></div>' +
     buildFilterTags('fatAccFilter', filterItems) +
     (chartAccs.length > 0 ?
       '<div class="chart-title">Distribuição por conta</div><div class="chart-wrap" style="height:220px"><canvas id="chart-f-donut"></canvas></div>' : '') +
@@ -1226,7 +1229,7 @@ function renderFaturamentos() {
     '<div class="list-header">Todos os faturamentos</div>' +
     buildSortBar('fatSort') +
     '<div class="entry-list">' + list + '</div>' +
-    '<div class="export-row"><button class="btn btn-export" onclick="exportFatSection()">&#8595; Exportar Excel</button></div>';
+    '';
 
   if (chartAccs.length > 0) {
     mkChart('chart-f-donut', 'doughnut', {
@@ -1305,9 +1308,7 @@ function renderBalanco() {
     </div>
     <div class="chart-title">Receitas vs gastos por ciclo</div>
     <div class="chart-wrap" style="height:200px"><canvas id="chart-b-bar"></canvas></div>
-    <div class="export-row">
-      <button class="btn btn-export" onclick="exportBalancoSection()">↓ Exportar Excel</button>
-    </div>`;
+`;
 
   const legendFont = { size: 11, family: "'DM Sans',sans-serif" };
   mkChart('chart-b-bar', 'bar', {
@@ -1322,6 +1323,10 @@ function renderBalanco() {
         display: true, position: 'bottom',
         labels: { color: 'rgba(255,255,255,0.6)', font: legendFont, boxWidth: 10, boxHeight: 10, padding: 12 }
       }
+    },
+    scales: {
+      y: { display: false },
+      x: { grid: { display: false }, border: { display: false } }
     }
   });
 }
