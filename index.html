@@ -93,16 +93,25 @@ select option{background:#111;color:#fff}
 
 /* ── ENTRY LIST ── */
 .entry-list{display:flex;flex-direction:column}
-.entry-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px}
+.entry-item{border-bottom:1px solid rgba(255,255,255,0.06)}
 .entry-item:last-child{border-bottom:none}
-.entry-date{font-size:12px;color:var(--muted);min-width:36px;flex-shrink:0}
+.entry-header{display:flex;align-items:center;padding:12px 0;gap:12px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
 .entry-main{flex:1;min-width:0}
-.entry-seg{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.entry-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.entry-label{font-size:13px;font-weight:600;line-height:1.3;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{display:inline-block;font-size:10px;border-radius:4px;padding:2px 6px;font-weight:500;line-height:1.4;white-space:nowrap}
+.tag-seg{background:rgba(125,57,235,0.15);color:var(--accent)}
+.tag-status{background:rgba(255,255,255,0.08);color:var(--muted)}
+.tag-method{background:rgba(255,255,255,0.06);color:var(--muted)}
 .entry-right{text-align:right;flex-shrink:0}
 .entry-amount{font-size:14px;font-weight:500}
-.entry-badge{display:inline-block;font-size:10px;background:rgba(125,57,235,0.15);color:var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
-.entry-rec{display:inline-block;font-size:10px;background:rgba(198,255,51,0.1);color:var(--lime);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+.entry-date-small{font-size:11px;color:var(--muted);margin-top:3px}
+.entry-open .entry-header{padding-bottom:10px}
+.entry-edit{padding:12px 0 16px;border-top:1px solid rgba(255,255,255,0.08);animation:fadeSlide 150ms ease}
+.edit-row{margin-bottom:10px}
+.edit-actions{display:flex;gap:8px;margin-top:14px}
+.btn-del{background:transparent;border:1px solid rgba(255,77,77,0.35);color:#ff4d4d;padding:11px 20px;border-radius:6px;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:opacity 150ms;flex-shrink:0}
+.btn-del:hover{opacity:.8}
 
 /* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
@@ -153,7 +162,7 @@ select option{background:#111;color:#fff}
     <div class="auth-sub">Digite a senha para continuar.</div>
     <form onsubmit="doAuth(event)">
       <div class="form-group">
-        <input type="password" id="auth-pass" placeholder="Senha" autocomplete="current-password" autofocus>
+        <input type="tel" inputmode="numeric" id="auth-pass" placeholder="Senha" autocomplete="current-password" autofocus>
       </div>
       <div id="auth-error" class="error-msg" style="display:none">Senha incorreta.</div>
       <button type="submit" class="btn btn-primary" style="margin-top:12px">Entrar</button>
@@ -233,6 +242,7 @@ const S = {
   gastosPeriod: 'month', gastosFrom: '', gastosTo: '',
   fatPeriod:    'month', fatFrom:    '', fatTo:    '',
   balancoPeriod:'month', balancoFrom:'', balancoTo: '',
+  expandedEntry: null,   // { type: 'exp'|'inc', id: string }
 };
 const CI = {}; // active Chart.js instances keyed by canvas id
 
@@ -525,6 +535,195 @@ function setCustomDate(fieldKey, periodKey) {
 }
 
 // ════════════════════════════════════════════════════
+// ENTRY HELPERS — toggle, render, save, delete
+// ════════════════════════════════════════════════════
+function toggleEntry(type, id) {
+  if (S.expandedEntry && S.expandedEntry.type === type && S.expandedEntry.id === id) {
+    S.expandedEntry = null;
+  } else {
+    S.expandedEntry = { type, id };
+  }
+  renderSection(S.section);
+}
+
+function eeSelectMeio(eid, val) {
+  const cc  = document.getElementById('ee-cc-'  + eid);
+  const pix = document.getElementById('ee-pix-' + eid);
+  if (cc)  cc.classList.toggle('selected',  val === 'credit_card');
+  if (pix) pix.classList.toggle('selected', val === 'pix');
+}
+
+function saveExpEntry(id) {
+  const expenses = loadExp();
+  const idx = expenses.findIndex(e => e.id === id);
+  if (idx < 0) return;
+  const orig  = expenses[idx];
+  const date  = document.getElementById('ee-date-'  + id).value;
+  const seg   = document.getElementById('ee-seg-'   + id).value;
+  const val   = parseFloat(document.getElementById('ee-val-' + id).value);
+  const notes = document.getElementById('ee-notes-' + id).value.trim();
+  const mCC   = document.getElementById('ee-cc-'    + id).classList.contains('selected');
+  if (!date || !seg || isNaN(val) || val <= 0) return;
+  expenses[idx] = { ...orig, date, segment: seg, amount: val, notes, paymentMethod: mCC ? 'credit_card' : 'pix' };
+  saveExp(expenses);
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
+
+function deleteExpEntry(id) {
+  saveExp(loadExp().filter(e => e.id !== id));
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
+
+function saveIncEntry(id) {
+  const income = loadInc();
+  const idx = income.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const orig   = income[idx];
+  const date   = document.getElementById('ie-date-'   + id).value;
+  const acc    = document.getElementById('ie-acc-'    + id).value;
+  const client = document.getElementById('ie-client-' + id).value.trim();
+  const val    = parseFloat(document.getElementById('ie-val-'   + id).value);
+  const notes  = document.getElementById('ie-notes-'  + id).value.trim();
+  if (!date || !acc || !client || isNaN(val) || val <= 0) return;
+  income[idx] = { ...orig, date, account: acc, client, amount: val, notes };
+  saveInc(income);
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
+
+function deleteIncEntry(id) {
+  saveInc(loadInc().filter(i => i.id !== id));
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
+
+function expenseEntryHtml(e) {
+  const isOpen    = S.expandedEntry && S.expandedEntry.type === 'exp' && S.expandedEntry.id === e.id;
+  const label     = e.notes ? esc(e.notes) : esc(e.segment);
+  const segTag    = `<span class="tag tag-seg">${esc(e.segment)}</span>`;
+  const statusTag = e.installments > 1
+    ? `<span class="tag tag-status">${e.currentInstallment}/${e.installments}</span>`
+    : e.isRecurring
+      ? '<span class="tag tag-status">recorrente</span>'
+      : '<span class="tag tag-status">à vista</span>';
+  const methodTag = `<span class="tag tag-method">${e.paymentMethod === 'credit_card' ? 'Crédito' : 'Pix'}</span>`;
+
+  const header = `
+    <div class="entry-header" onclick="toggleEntry('exp','${e.id}')">
+      <div class="entry-main">
+        <div class="entry-label">${label}</div>
+        <div class="entry-tags">${segTag}${statusTag}${methodTag}</div>
+      </div>
+      <div class="entry-right">
+        <div class="entry-amount">${brl(e.amount)}</div>
+        <div class="entry-date-small">${fmtDate(e.date)}</div>
+      </div>
+    </div>`;
+
+  if (!isOpen) return `<div class="entry-item">${header}</div>`;
+
+  const segOpts = SEGMENTS.map(s =>
+    `<option value="${esc(s)}"${e.segment === s ? ' selected' : ''}>${esc(s)}</option>`
+  ).join('');
+  const mCC = e.paymentMethod === 'credit_card';
+
+  const form = `
+    <div class="entry-edit">
+      <div class="edit-row">
+        <label class="form-label">Data</label>
+        <input type="date" id="ee-date-${e.id}" value="${e.date}">
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Segmento</label>
+        <select id="ee-seg-${e.id}">${segOpts}</select>
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" id="ee-val-${e.id}" step="0.01" value="${e.amount.toFixed(2)}">
+      </div>
+      ${e.installments > 1 ? `<div class="edit-row" style="opacity:.4">
+        <label class="form-label">Parcela</label>
+        <input type="text" value="${e.currentInstallment}/${e.installments}" disabled>
+      </div>` : ''}
+      <div class="edit-row">
+        <label class="form-label">Meio</label>
+        <div class="toggle-group">
+          <button type="button" id="ee-cc-${e.id}"  class="toggle-btn${mCC  ? ' selected' : ''}" onclick="eeSelectMeio('${e.id}','credit_card')">Cartão</button>
+          <button type="button" id="ee-pix-${e.id}" class="toggle-btn${!mCC ? ' selected' : ''}" onclick="eeSelectMeio('${e.id}','pix')">Pix</button>
+        </div>
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Notas</label>
+        <input type="text" id="ee-notes-${e.id}" value="${esc(e.notes || '')}" maxlength="120">
+      </div>
+      <div class="edit-actions">
+        <button class="btn btn-primary" style="flex:1;margin-top:0" onclick="saveExpEntry('${e.id}')">Salvar</button>
+        <button class="btn-del" onclick="deleteExpEntry('${e.id}')">Apagar</button>
+      </div>
+    </div>`;
+
+  return `<div class="entry-item entry-open">${header}${form}</div>`;
+}
+
+function incomeEntryHtml(i) {
+  const isOpen    = S.expandedEntry && S.expandedEntry.type === 'inc' && S.expandedEntry.id === i.id;
+  const label     = i.notes ? esc(i.notes) : esc(i.client);
+  const accTag    = `<span class="tag tag-seg">${esc(i.account)}</span>`;
+  const clientTag = i.notes ? `<span class="tag tag-status">${esc(i.client)}</span>` : '';
+  const recTag    = i.isRecurring ? '<span class="tag tag-status">recorrente</span>' : '';
+
+  const header = `
+    <div class="entry-header" onclick="toggleEntry('inc','${i.id}')">
+      <div class="entry-main">
+        <div class="entry-label">${label}</div>
+        <div class="entry-tags">${accTag}${clientTag}${recTag}</div>
+      </div>
+      <div class="entry-right">
+        <div class="entry-amount positive">${brl(i.amount)}</div>
+        <div class="entry-date-small">${fmtDate(i.date)}</div>
+      </div>
+    </div>`;
+
+  if (!isOpen) return `<div class="entry-item">${header}</div>`;
+
+  const accOpts = ACCOUNTS.map(a =>
+    `<option value="${esc(a)}"${i.account === a ? ' selected' : ''}>${esc(a)}</option>`
+  ).join('');
+
+  const form = `
+    <div class="entry-edit">
+      <div class="edit-row">
+        <label class="form-label">Data</label>
+        <input type="date" id="ie-date-${i.id}" value="${i.date}">
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Conta</label>
+        <select id="ie-acc-${i.id}">${accOpts}</select>
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Cliente</label>
+        <input type="text" id="ie-client-${i.id}" value="${esc(i.client)}" maxlength="120">
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" id="ie-val-${i.id}" step="0.01" value="${i.amount.toFixed(2)}">
+      </div>
+      <div class="edit-row">
+        <label class="form-label">Notas</label>
+        <input type="text" id="ie-notes-${i.id}" value="${esc(i.notes || '')}" maxlength="120">
+      </div>
+      <div class="edit-actions">
+        <button class="btn btn-primary" style="flex:1;margin-top:0" onclick="saveIncEntry('${i.id}')">Salvar</button>
+        <button class="btn-del" onclick="deleteIncEntry('${i.id}')">Apagar</button>
+      </div>
+    </div>`;
+
+  return `<div class="entry-item entry-open">${header}${form}</div>`;
+}
+
+// ════════════════════════════════════════════════════
 // SECTION 1 — HOME
 // ════════════════════════════════════════════════════
 function renderHome() {
@@ -704,19 +903,7 @@ function homeSummaryHtml() {
 
   const list = sorted.length === 0
     ? '<div class="empty-state">Nenhum gasto registrado este ciclo.</div>'
-    : sorted.map(e => `
-        <div class="entry-item">
-          <div class="entry-date">${fmtShort(e.date)}</div>
-          <div class="entry-main">
-            <div class="entry-seg">${esc(e.segment)}${e.installments>1
-              ? `<span class="entry-badge">${e.currentInstallment}/${e.installments}</span>`:''}${e.isRecurring
-              ? '<span class="entry-rec">recorrente</span>':''}</div>
-            <div class="entry-sub">${e.paymentMethod==='credit_card'?'Cartão':'Pix'}</div>
-          </div>
-          <div class="entry-right">
-            <div class="entry-amount">${brl(e.amount)}</div>
-          </div>
-        </div>`).join('');
+    : sorted.map(e => expenseEntryHtml(e)).join('');
 
   return `
     <div class="cards-scroll">${cards}</div>
@@ -756,18 +943,7 @@ function renderGastos() {
   const sorted = [...expenses].sort((a,b) => b.date.localeCompare(a.date));
   const list = sorted.length === 0
     ? '<div class="empty-state">Nenhum gasto no período selecionado.</div>'
-    : sorted.map(e => `
-        <div class="entry-item">
-          <div class="entry-date">${fmtShort(e.date)}</div>
-          <div class="entry-main">
-            <div class="entry-seg">${esc(e.segment)}${e.installments>1
-              ? `<span class="entry-badge">${e.currentInstallment}/${e.installments}</span>`:''}</div>
-            <div class="entry-sub">${e.paymentMethod==='credit_card'?'Cartão':'Pix'} · ${fmtDate(e.date)}</div>
-          </div>
-          <div class="entry-right">
-            <div class="entry-amount">${brl(e.amount)}</div>
-          </div>
-        </div>`).join('');
+    : sorted.map(e => expenseEntryHtml(e)).join('');
 
   el.innerHTML = `
     <h1 class="section-title">Gastos</h1>
@@ -823,17 +999,7 @@ function renderFaturamentos() {
   const sorted = [...income].sort((a,b) => b.date.localeCompare(a.date));
   const list = sorted.length === 0
     ? '<div class="empty-state">Nenhum faturamento no período selecionado.</div>'
-    : sorted.map(i => `
-        <div class="entry-item">
-          <div class="entry-date">${fmtShort(i.date)}</div>
-          <div class="entry-main">
-            <div class="entry-seg">${esc(i.account)}</div>
-            <div class="entry-sub">${esc(i.client)} · ${fmtDate(i.date)}</div>
-          </div>
-          <div class="entry-right">
-            <div class="entry-amount positive">${brl(i.amount)}</div>
-          </div>
-        </div>`).join('');
+    : sorted.map(i => incomeEntryHtml(i)).join('');
 
   el.innerHTML = `
     <h1 class="section-title">Faturamentos</h1>
@@ -1087,6 +1253,7 @@ function renderSection(name) {
 }
 
 function showSection(name) {
+  S.expandedEntry = null;
   destroyAllCharts();
 
   document.querySelectorAll('.section').forEach(s => {
