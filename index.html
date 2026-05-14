@@ -472,39 +472,45 @@ function periodLabel(period, from, to) {
 // RECURRING GENERATION  (called once on app load)
 // ════════════════════════════════════════════════════
 function generateRecurring() {
-  const expenses   = loadExp();
-  const today      = todayISO();
-  const limit      = addMonths(today, 24);
-  const existingIds = new Set(expenses.map(e => e.id));
+  const expenses = loadExp();
+  const today    = todayISO();
+  const limit    = addMonths(today, 24);
 
-  // Group recurring by notes key
+  // Group recurring expenses by notes key; find earliest entry as template
   const groups = {};
   for (const e of expenses) {
     if (!e.isRecurring) continue;
-    const key = e.notes || e._groupId || e.id;
-    if (!groups[key]) groups[key] = { template: e, months: new Set() };
-    groups[key].months.add(e.date.slice(0, 7));
+    const key = e.notes || e.id;
+    if (!groups[key]) groups[key] = { template: e, covered: new Set() };
+    groups[key].covered.add(e.date.slice(0, 7));
     if (e.date < groups[key].template.date) groups[key].template = e;
   }
+  if (!Object.keys(groups).length) return;
 
-  const add = [];
-  for (const [, { template: t, months }] of Object.entries(groups)) {
+  const existingIds = new Set(expenses.map(e => e.id));
+  const toAdd = [];
+
+  for (const { template: t, covered } of Object.values(groups)) {
     const safeKey = (t.notes || '').toUpperCase().replace(/[^A-Z0-9]/g, '_') || 'REC';
-    let cur = addMonths(t.date, 1); // start from month after original
+    let cur = addMonths(t.date, 1); // month after original; original already exists
     while (cur <= limit) {
       if (t.recurringEndDate && cur > t.recurringEndDate) break;
       const ym = cur.slice(0, 7);
-      const [y, m] = ym.split('-');
-      const rid = `recur_${safeKey}_${y}_${m}`;
-      if (!months.has(ym) && !existingIds.has(rid)) {
-        add.push({ ...t, id: rid, date: cur, installments: 1, currentInstallment: 1 });
-        months.add(ym);
+      const [y, mo] = ym.split('-');
+      const rid = 'recur_' + safeKey + '_' + y + '_' + mo;
+      if (!existingIds.has(rid) && !covered.has(ym)) {
+        toAdd.push({ ...t, id: rid, date: cur, installments: 1, currentInstallment: 1 });
+        covered.add(ym);
         existingIds.add(rid);
       }
       cur = addMonths(cur, 1);
     }
   }
-  if (add.length) saveExp([...expenses, ...add]);
+
+  if (toAdd.length) {
+    console.log('[generateRecurring] adding', toAdd.length, 'entries');
+    saveExp([...expenses, ...toAdd]);
+  }
 }
 
 // ════════════════════════════════════════════════════
@@ -1188,6 +1194,7 @@ function submitGasto(ev) {
   }
 
   saveExp([...loadExp(), ...newExps]);
+  if (tipo === 'rec') generateRecurring(); // expand 24 months immediately after adding
   S.homeTab = null; S.gastoTipo = 'avista'; S.meioSelected = 'credit_card';
   if (S.section === 'gastos') { S.gastosFormOpen = false; renderSection('gastos'); }
   else renderHome();
@@ -1329,6 +1336,10 @@ function renderGastos() {
   const navR = getNavCycleRange(S.gastosNavOffset);
   const { start, end } = navR;
   const allPeriodExp = loadExp().filter(e => e.date >= start && e.date <= end);
+  if (navR.isFuture || S.gastosNavOffset !== 0) {
+    const allRec = loadExp().filter(e => e.isRecurring);
+    console.log('[Gastos debug] offset=' + S.gastosNavOffset + ' range=' + start + ' to ' + end + ' | total=' + loadExp().length + ' matching=' + allPeriodExp.length + ' recurring=' + allRec.length);
+  }
 
   // Totals
   const totalGasto = allPeriodExp.reduce((s,e) => s+e.amount, 0);
