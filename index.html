@@ -375,21 +375,26 @@ const S = {
 // ════════════════════════════════════════════════════
 // DATA LAYER — localStorage is the source of truth
 // ════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbxIWWtCbYiwbXN8CLx1BxwwITgntQbbLJyDnyC0NSk_v6Owbsvh9F1OfpCabvRnfHGdfg/exec';
 const DB = { expenses: [] };
 
-async function apiGet(key) {
+// GET /api/data → {expenses: [...]}
+async function serverGet() {
   try {
-    const r = await fetch(API_URL + '?key=' + encodeURIComponent(key));
+    const r = await fetch('/api/data');
     if (!r.ok) return null;
-    const txt = await r.text();
-    if (!txt || txt.trim() === '' || txt.trim() === 'null') return null;
-    return JSON.parse(txt);
+    const d = await r.json();
+    return Array.isArray(d.expenses) ? d.expenses : null;
   } catch(e) { return null; }
 }
-async function apiSet(key, value) {
+
+// POST /api/data ← {expenses: [...]}
+async function serverSet(expenses) {
   try {
-    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ key, value: JSON.stringify(value) }) });
+    const r = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expenses })
+    });
     return r.ok;
   } catch(e) { return false; }
 }
@@ -406,8 +411,8 @@ function _persist(arr) {
   DB.expenses = arr;
   localStorage.setItem('pf_expenses', JSON.stringify(arr));
   console.log('SAVED: ' + arr.length + ' entries in localStorage');
-  apiSet('pf_expenses', arr).then(ok => {
-    console.log('[Sheets] ok=' + ok + ' | ' + arr.length + ' entries');
+  serverSet(arr).then(ok => {
+    console.log('[Server] ok=' + ok + ' | ' + arr.length + ' entries');
     if (ok) { setSyncDot('green'); } else { setSyncDot('red'); }
   });
 }
@@ -422,8 +427,8 @@ function saveExp(arr) {
   // Step 3: async fire-and-forget upload to Sheets
   showToast('Salvando...', 'saving', 0);
   setSyncDot('red');
-  apiSet('pf_expenses', arr).then(ok => {
-    console.log('[Sheets] ok=' + ok + ' | ' + arr.length + ' entries');
+  serverSet(arr).then(ok => {
+    console.log('[Server] ok=' + ok + ' | ' + arr.length + ' entries');
     if (ok) { showToast('✓ Sincronizado', 'success', 2000); setSyncDot('green'); }
     else     { showToast('⚠ Salvo localmente', 'local', 4000); }
   });
@@ -489,7 +494,7 @@ async function syncFromAPI(force) {
   const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'block';
   try {
-    const re = await apiGet('pf_expenses');
+    const re = await serverGet();
     if (Array.isArray(re)) {
       const local    = DB.expenses;          // current localStorage array
       const localMap = {};
@@ -502,17 +507,17 @@ async function syncFromAPI(force) {
         if (!localMap[e.id]) { toAdd.push(e); added++; }
       }
       const merged = [...local, ...toAdd];
-      console.log('SYNC: localStorage had ' + local.length + ', Sheets had ' + re.length + ', merged result ' + merged.length);
+      console.log('SYNC: localStorage had ' + local.length + ', Server had ' + re.length + ', merged result ' + merged.length);
 
       if (added > 0) {
         DB.expenses = merged;
         localStorage.setItem('pf_expenses', JSON.stringify(merged));
-        apiSet('pf_expenses', merged); // push merged back to Sheets
+        serverSet(merged); // push merged back to Sheets
         renderSection(S.section);
       } else if (local.length > re.length) {
         // Local has more entries — upload local to Sheets to catch it up
-        apiSet('pf_expenses', local);
-        console.log('SYNC: uploaded local(' + local.length + ') to Sheets (Sheets was behind)');
+        serverSet(local);
+        console.log('SYNC: uploaded local(' + local.length + ') to server (server was behind)');
       }
     }
     setSyncDot('green');
@@ -1732,13 +1737,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.removeItem('pf_expenses');
     localStorage.removeItem('pf_income');
     DB.expenses = [];
-    apiSet('pf_expenses', []);
-    apiSet('pf_income',   []);
+    serverSet([]);
     localStorage.setItem('pf_wipe_v2', '1');
   }
-
-  // Keep-alive ping to warm up GAS cold start immediately (fire-and-forget)
-  fetch(API_URL + '?key=_ping').catch(() => {});
 
   // Show thin loading bar — data coming from Sheets
   const bar = document.getElementById('sync-bar');
@@ -1747,10 +1748,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Preload localStorage as instant fallback while we wait for API
   try { loadFromCache(); } catch(e) { DB.expenses = []; }
 
-  // Fetch expenses from Google Sheets — 8-second timeout, then fall back to cache
+  // Fetch expenses from server — 8-second timeout, then fall back to cache
   let apiOk = false;
   try {
-    const _fetch   = apiGet('pf_expenses');
+    const _fetch   = serverGet();
     const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
     const re = await Promise.race([_fetch, _timeout]);
     if (Array.isArray(re)) {
@@ -1759,13 +1760,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       for (const e of local) localMap[e.id] = true;
       const toAdd    = re.filter(e => !localMap[e.id]);
       const merged   = [...local, ...toAdd];
-      console.log('[init] local=' + local.length + ' remote=' + re.length + ' merged=' + merged.length);
+      console.log('[init] local=' + local.length + ' server=' + re.length + ' merged=' + merged.length);
       DB.expenses = merged;
       localStorage.setItem('pf_expenses', JSON.stringify(merged));
       if (toAdd.length === 0 && local.length > re.length) {
-        apiSet('pf_expenses', local); // local has more — push to Sheets
+        serverSet(local); // local has more — push to Sheets
       } else if (toAdd.length > 0) {
-        apiSet('pf_expenses', merged); // merged has new entries — push back
+        serverSet(merged); // merged has new entries — push back
       }
     }
     apiOk = true;
