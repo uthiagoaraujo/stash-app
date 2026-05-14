@@ -351,7 +351,7 @@ async function manualSync() {
   if (btn) btn.classList.add('spinning');
   if (lbl) lbl.textContent = 'Sincronizando...';
   try {
-    await syncFromAPI();
+    await syncFromAPI(true);
     if (lbl) { lbl.textContent = '✓ Atualizado'; setTimeout(() => { if (lbl) lbl.textContent = ''; }, 2000); }
     setSyncDot('green');
   } catch(e) {
@@ -411,7 +411,7 @@ function loadFromCache() {
   DB.saldo    = parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
 }
 
-async function syncFromAPI() {
+async function syncFromAPI(force) {
   const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'block';
   try {
@@ -421,7 +421,7 @@ async function syncFromAPI() {
     let changed = false;
     if (Array.isArray(re) && re.length > 0) {
       const ns = JSON.stringify(re);
-      const recentSave = (Date.now() - _lastLocalSave) < 60000; // 60-second lock after local write
+      const recentSave = !force && (Date.now() - _lastLocalSave) < 60000;
       if (!recentSave && ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
     }
     if (rs !== null && rs !== undefined && rs !== '') {
@@ -1667,16 +1667,14 @@ function doAuth(ev) {
 // ════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (typeof Chart !== 'undefined') {
     Chart.defaults.font.family = "'DM Sans', sans-serif";
     Chart.defaults.font.size   = 11;
     Chart.defaults.color       = 'rgba(255,255,255,0.6)';
   }
 
-  // Load cache immediately — no blocking
-  try { loadFromCache(); } catch(e) { DB.expenses = []; DB.saldo = 0; }
-  // One-time data wipe — runs once, then sets flag to skip forever
+  // One-time data wipe
   if (!localStorage.getItem('pf_wipe_v2')) {
     localStorage.removeItem('pf_expenses');
     localStorage.removeItem('pf_income');
@@ -1686,6 +1684,33 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('pf_wipe_v2', '1');
   }
 
+  // Show thin loading bar — data coming from Sheets
+  const bar = document.getElementById('sync-bar');
+  if (bar) bar.style.display = 'block';
+
+  // Preload localStorage as instant fallback while we wait for API
+  try { loadFromCache(); } catch(e) { DB.expenses = []; DB.saldo = 0; }
+
+  // Fetch from Google Sheets — 5-second timeout, then use localStorage cache
+  let apiOk = false;
+  try {
+    const _fetch = Promise.all([apiGet('pf_expenses'), apiGet('pf_saldo_disponivel')]);
+    const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
+    const [re, rs] = await Promise.race([_fetch, _timeout]);
+    if (Array.isArray(re) && re.length > 0) {
+      DB.expenses = re;
+      localStorage.setItem('pf_expenses', JSON.stringify(re));
+    }
+    if (rs !== null && rs !== undefined && rs !== '') {
+      DB.saldo = parseFloat(rs) || 0;
+      localStorage.setItem('pf_saldo_disponivel', String(DB.saldo));
+    }
+    apiOk = true;
+  } catch(e) { /* timeout or network error — DB already has localStorage data */ }
+
+  // Hide loading bar
+  if (bar) { bar.style.opacity = '0'; bar.style.transition = 'opacity 400ms'; setTimeout(() => { bar.style.display = 'none'; bar.style.opacity = '1'; bar.style.transition = ''; }, 420); }
+  setSyncDot(apiOk ? 'green' : 'yellow');
 
   setTimeout(() => { const p = document.getElementById('auth-pass'); if (p && !sessionStorage.getItem('auth')) p.focus(); }, 50);
 
@@ -1697,34 +1722,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try { updateCreditCardSummaries(); } catch(e) { console.warn('updateCreditCardSummaries', e); }
     S.homeFormOpen = true;
     showSection('home');
-    // First load ever: show centered spinner until API responds
-    const hasCacheData = DB.expenses.length > 0;
-    if (!hasCacheData) {
-      const fls = document.getElementById('first-load-spinner');
-      if (fls) fls.style.display = 'flex';
-    }
   }
   // else: show auth screen (default state)
 
-  // Background API sync — non-blocking
-  syncFromAPI();
-
-  if (!localStorage.getItem('pf_icon_png')) {
-    try {
-      const __c = document.createElement('canvas');
-      __c.width = __c.height = 512;
-      const __img = new Image();
-      const __svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.35 28.35" width="512" height="512"><rect width="28.35" height="28.35" fill="#c6ff33" rx="4"/><circle cx="14.17" cy="14.17" r="7.09" fill="#fff"/><path fill="#7f3aef" d="M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z"/><path fill="#7f3aef" d="M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z"/><path d="M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z"/><path d="M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z"/></svg>';
-      const __blob = new Blob([__svg], {type: 'image/svg+xml'});
-      const __url  = URL.createObjectURL(__blob);
-      __img.onload = () => {
-        __c.getContext('2d').drawImage(__img, 0, 0, 512, 512);
-        URL.revokeObjectURL(__url);
-        try { localStorage.setItem('pf_icon_png', __c.toDataURL('image/png')); } catch(e) {}
-      };
-      __img.src = __url;
-    } catch(e) {}
-  }});
+  
+});
 </script>
 <div id="toast"></div><div id="sync-bar"></div><div id="first-load-spinner"><div id="fls-inner"></div></div>
 </body>
