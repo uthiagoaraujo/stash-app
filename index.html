@@ -797,14 +797,14 @@ function expenseEntryHtml(e) {
     ? `<span class="tag tag-status">${e.currentInstallment}/${e.installments}</span>`
     : e.isRecurring
       ? '<span class="tag tag-status">recorrente</span>'
-      : '<span class="tag tag-status">à vista</span>';
+      : '';
   const methodTag = `<span class="tag tag-method">${e.paymentMethod === 'credit_card' ? 'Crédito' : 'Pix'}</span>`;
 
   const header = `
     <div class="entry-header" onclick="toggleEntry('exp','${e.id}')">
       <div class="entry-main">
         <div class="entry-label">${label}</div>
-        <div class="entry-tags">${segTag}${statusTag}${methodTag}</div>
+        <div class="entry-tags">${segTag}${statusTag}</div>
       </div>
       <div class="entry-right">
         <div class="entry-amount">${brl(e.amount)}</div>
