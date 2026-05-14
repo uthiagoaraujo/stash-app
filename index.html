@@ -1123,9 +1123,7 @@ function getNavCycleRange(offset) {
   const cs  = cycleStart();
   const s   = new Date(cs.getFullYear(), cs.getMonth() + offset, 3);
   const e   = new Date(cs.getFullYear(), cs.getMonth() + offset + 1, 2);
-  const now = new Date();
-  const end = (offset === 0 && now < e) ? now : e;
-  return { start: isoDate(s), end: isoDate(end), label: fmtCycleLabel(isoDate(s)), isFuture: offset > 0 };
+  return { start: isoDate(s), end: isoDate(e), label: fmtCycleLabel(isoDate(s)), isFuture: offset > 0 };
 }
 function navMonth(section, dir) {
   if (section === 'cartao') { S.cartaoNavOffset += dir; S.cartaoSegFilter = null; S.expandedSegCard = null; }
