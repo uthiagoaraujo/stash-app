@@ -130,6 +130,7 @@ select option{background:#111;color:#fff}
 .tag-seg{background:rgba(125,57,235,0.15);color:var(--accent)}
 .tag-status{background:rgba(255,255,255,0.08);color:var(--muted)}
 .tag-method{background:rgba(255,255,255,0.06);color:var(--muted)}
+.tag-pix{background:#C6FF33;color:#000;font-weight:600}
 .entry-right{text-align:right;flex-shrink:0}
 .entry-amount{font-size:14px;font-weight:500}
 .entry-date-small{font-size:11px;color:var(--muted);margin-top:3px}
@@ -190,7 +191,28 @@ select option{background:#111;color:#fff}
 .week-sep-line{width:100%;height:1px;background:#C6FF33;opacity:0.6}
 .btn-add-gasto{width:100%;padding:14px;background:#7D39EB;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:16px;transition:opacity 150ms;display:block}
 .btn-add-gasto:active{opacity:.82}
-/* ── CHARTS ── */
+/* ── FORM CARD (white) ── */
+.form-card{background:#fff;border-radius:16px;padding:1.5rem;margin-bottom:16px}
+.form-card input,.form-card select,.form-card textarea{background:#fff;border:1px solid rgba(0,0,0,0.15);color:#000;color-scheme:light}
+.form-card input:focus,.form-card select:focus{border-color:#7D39EB;box-shadow:0 0 0 2px rgba(125,57,235,0.12)}
+.form-card .form-label{color:#444}
+.form-card ::placeholder{color:#bbb}
+.form-card select option{background:#fff;color:#000}
+.form-card .toggle-btn{border:1px solid rgba(0,0,0,0.15);color:#666;background:#f5f5f5}
+.form-card .toggle-btn.selected{border-color:#7D39EB;color:#7D39EB;background:rgba(125,57,235,0.06)}
+.form-card .btn-primary{background:#7D39EB;color:#fff;width:100%;margin-top:6px}
+/* ── SECTION BUTTONS ── */
+.btn-novo-cartao{width:100%;padding:14px;background:#7D39EB;color:#fff;border:none;border-radius:8px;font-family:var(--font);font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:16px;transition:opacity 150ms;display:block}
+.btn-novo-pix{width:100%;padding:14px;background:#C6FF33;color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:1rem;font-weight:600;cursor:pointer;margin-bottom:16px;transition:opacity 150ms;display:block}
+.btn-novo-cartao:active,.btn-novo-pix:active{opacity:.82}
+/* ── NAV LIME (Cartão + Pix pages) ── */
+.nav-lime-label{color:#C6FF33!important;font-weight:600}
+.nav-lime-btn{border-color:rgba(198,255,51,0.5)!important;color:#C6FF33!important}
+/* ── PROJ TAG (inline) ── */
+.proj-tag{display:inline-block;font-size:10px;color:#C6FF33;border:1px solid rgba(198,255,51,0.4);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle;letter-spacing:0.04em}
+/* ── CC SUMMARY ENTRY ── */
+.entry-cc-summary .entry-header{cursor:default;opacity:.85}
+.entry-cc-summary .entry-header::after{content:'auto';font-size:9px;color:var(--muted);margin-left:auto;padding-left:8px}/* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
 .chart-wrap canvas{max-height:220px}
 .chart-title{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
@@ -208,12 +230,9 @@ select option{background:#111;color:#fff}
 @keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── SALDO DISPONÍVEL (Balanço) ── */
-.saldo-card{border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px}
-.saldo-card .card-value{font-size:22px}
-.saldo-edit-btn{background:transparent;border:none;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;padding:2px 8px;border-radius:4px;transition:color 150ms}
-.saldo-edit-btn:hover{color:var(--text)}
-.saldo-projection{font-size:13px;color:var(--muted);margin-top:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px}
-.saldo-projection span{font-weight:500}
+
+
+
 
 /* ── INSIGHTS ── */
 .insight-card{border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
@@ -254,9 +273,8 @@ select option{background:#111;color:#fff}
     <div><div class="app-header-name">Stash</div><div class="app-header-sub">by: uthiago</div></div>
   </div>
   <div class="section" id="section-home"></div>
-  <div class="section" id="section-gastos"></div>
-  <div class="section" id="section-faturamentos"></div>
-  <div class="section" id="section-balanco"></div>
+  <div class="section" id="section-cartao"></div>
+  <div class="section" id="section-pix"></div>
   <div class="section" id="section-insights"></div>
 </div>
 
@@ -264,37 +282,25 @@ select option{background:#111;color:#fff}
 <nav id="bottom-nav" style="display:none">
   <button class="nav-item" data-section="home" onclick="showSection('home')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
-      <polyline points="9 21 9 12 15 12 15 21"/>
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><polyline points="9 21 9 12 15 12 15 21"/>
     </svg>
     Início
   </button>
-  <button class="nav-item" data-section="gastos" onclick="showSection('gastos')">
+  <button class="nav-item" data-section="cartao" onclick="showSection('cartao')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="5" width="20" height="14" rx="2"/>
-      <line x1="2" y1="10" x2="22" y2="10"/>
+      <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
     </svg>
-    Gastos
+    Cartão
   </button>
-  <button class="nav-item" data-section="faturamentos" onclick="showSection('faturamentos')">
+  <button class="nav-item" data-section="pix" onclick="showSection('pix')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19"/>
-      <polyline points="19 12 12 5 5 12"/>
+      <path d="M7 16l5-5 5 5"/><path d="M7 8l5 5 5-5"/>
     </svg>
-    Faturamentos
-  </button>
-  <button class="nav-item" data-section="balanco" onclick="showSection('balanco')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/>
-      <line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-    Balanço
+    Pix
   </button>
   <button class="nav-item" data-section="insights" onclick="showSection('insights')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 2a7 7 0 017 7c0 2.5-1.3 4.7-3.3 6l-.7 3H9l-.7-3A7.2 7.2 0 015 9a7 7 0 017-7z"/>
-      <line x1="9" y1="21" x2="15" y2="21"/>
+      <path d="M12 2a7 7 0 017 7c0 2.5-1.3 4.7-3.3 6l-.7 3H9l-.7-3A7.2 7.2 0 015 9a7 7 0 017-7z"/><line x1="9" y1="21" x2="15" y2="21"/>
     </svg>
     Insights
   </button>
@@ -305,8 +311,7 @@ select option{background:#111;color:#fff}
 // CONSTANTS
 // ════════════════════════════════════════════════════
 const PASS = '6924';
-const SEGMENTS = ['Alimentação','Entretenimento','Transporte','Supermercado','Assinaturas','Vestuário','Moradia','Investimento','Casamento','Patrimônio','Outros'];
-const ACCOUNTS  = ['Inter CPF','Inter CNPJ','Nubank CPF','Nubank CNPJ','Sicoob CPF','Sicoob CNPJ'];
+const SEGMENTS = ['Alimentação','Assinatura','Casamento','Entretenimento','Investimento','Moradia','Outros','Patrimônio','Saída','Supermercado','Transporte','Vestuário'];
 const CHART_COLORS = ['#7D39EB','#C6FF33','#9B5FEF','#A3D900','#5B1DB0','#E8FF85','#3D0D7A'];
 
 // ════════════════════════════════════════════════════
@@ -314,25 +319,22 @@ const CHART_COLORS = ['#7D39EB','#C6FF33','#9B5FEF','#A3D900','#5B1DB0','#E8FF85
 // ════════════════════════════════════════════════════
 const S = {
   section: 'home',
-  homeTab: null,            // 'gastos' | 'faturamentos' | null
+  homeFormOpen: false,
   meioSelected: 'credit_card',
-  gastosPeriod: 'month', gastosFrom: '', gastosTo: '',
-  fatPeriod:    'month', fatFrom:    '', fatTo:    '',
-  balancoPeriod:'month', balancoFrom:'', balancoTo: '', balancoNavOffset: 0,
-  expandedEntry: null,   // { type: 'exp'|'inc', id: string }
-  gastoTipo: 'avista',   // 'avista' | 'parc' | 'rec'
-  fatTipo: 'unico',      // 'unico' | 'rec'
+  gastoTipo: 'avista',
+  cartaoNavOffset: 0, cartaoFormOpen: false, cartaoSegFilter: null, cartaoSort: 'date-desc',
+  pixNavOffset: 0,    pixFormOpen: false,    pixSegFilter: null,    pixSort: 'date-desc',
+  expandedSegCard: null, cardsScrollLeft: 0,
+  expandedEntry: null,
   pendingGroupEdit: null,
   pendingDeleteRecurring: null,
-  homeSort: 'date-desc', homeSeg: null, expandedSegCard: null,
-  gastosSort: 'date-desc', gastosSegFilter: null, gastosNavOffset: 0, gastosFormOpen: false,
-  fatSort:    'date-desc', fatAccFilter: null,    fatNavOffset: 0,
+  pendingDeleteInstallment: null,
 };
 // ════════════════════════════════════════════════════
 // API LAYER — Google Sheets backend, localStorage cache
 // ════════════════════════════════════════════════════
 const API_URL = 'https://script.google.com/macros/s/AKfycbxIWWtCbYiwbXN8CLx1BxwwITgntQbbLJyDnyC0NSk_v6Owbsvh9F1OfpCabvRnfHGdfg/exec';
-const DB = { expenses: [], income: [], saldo: 0 };
+const DB = { expenses: [], saldo: 0 };
 
 async function apiGet(key) {
   try {
@@ -352,7 +354,6 @@ async function apiSet(key, value) {
 
 function loadFromCache() {
   DB.expenses = JSON.parse(localStorage.getItem('pf_expenses') || '[]');
-  DB.income   = JSON.parse(localStorage.getItem('pf_income')   || '[]');
   DB.saldo    = parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
 }
 
@@ -360,17 +361,14 @@ async function syncFromAPI() {
   const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'block';
   try {
-    const [re, ri, rs] = await Promise.all([
-      apiGet('pf_expenses'), apiGet('pf_income'), apiGet('pf_saldo_disponivel')
+    const [re, rs] = await Promise.all([
+      apiGet('pf_expenses'), apiGet('pf_saldo_disponivel')
     ]);
     let changed = false;
     if (Array.isArray(re) && re.length > 0) {
       const ns = JSON.stringify(re);
       if (ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
     }
-    if (Array.isArray(ri) && ri.length > 0) {
-      const ns = JSON.stringify(ri);
-      if (ns !== JSON.stringify(DB.income)) { DB.income = ri; localStorage.setItem('pf_income', ns); changed = true; }
     }
     if (rs !== null && rs !== undefined && rs !== '') {
       const nv = parseFloat(rs) || 0;
@@ -388,9 +386,7 @@ const CI = {}; // active Chart.js instances keyed by canvas id
 // DATA LAYER
 // ════════════════════════════════════════════════════
 const loadExp = () => DB.expenses;
-const loadInc = () => DB.income;
 function saveExp(arr) { DB.expenses = arr; localStorage.setItem('pf_expenses', JSON.stringify(arr)); apiSet('pf_expenses', arr); }
-function saveInc(arr) { DB.income   = arr; localStorage.setItem('pf_income',   JSON.stringify(arr)); apiSet('pf_income',   arr); }
 function getSaldo()    { return DB.saldo; }
 function setSaldo(val) { DB.saldo = val; localStorage.setItem('pf_saldo_disponivel', String(val)); apiSet('pf_saldo_disponivel', val); }
 const uid = () => crypto.randomUUID();
@@ -513,32 +509,6 @@ function generateRecurring() {
   }
 }
 
-// ════════════════════════════════════════════════════
-// RECURRING INCOME GENERATION  (called once on app load)
-// ════════════════════════════════════════════════════
-function generateRecurringIncome() {
-  const income = loadInc();
-  const cs     = cycleStart();
-  const csISO  = isoDate(cs);
-  const nextCs = addMonths(csISO, 1);
-
-  const latest = {};
-  for (const i of income) {
-    if (!i.isRecurring) continue;
-    if (!latest[i._groupId] || i.date > latest[i._groupId].date) latest[i._groupId] = i;
-  }
-
-  const add = [];
-  for (const [, i] of Object.entries(latest)) {
-    const hasCurrent = income.some(x => x._groupId === i._groupId && x.date >= csISO && x.date < nextCs);
-    if (hasCurrent)          continue;
-    if (i.date >= nextCs)    continue;
-    const day  = i.recurringDay || 1;
-    const date = `${cs.getFullYear()}-${String(cs.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    add.push({ ...i, id: uid(), date });
-  }
-  if (add.length) saveInc([...income, ...add]);
-}
 
 // ════════════════════════════════════════════════════
 // FORMAT HELPERS
@@ -594,6 +564,36 @@ function setFilter(stateKey, val) {
   renderSection(S.section);
 }
 
+
+// ════════════════════════════════════════════════════
+// CC SUMMARY — auto pix entry for each credit cycle
+// ════════════════════════════════════════════════════
+function updateCreditCardSummaries() {
+  const expenses = loadExp();
+  const real     = expenses.filter(e => !e.isCreditCardSummary);
+  const cycles   = lastNCycles(24);
+  const newSums  = [];
+  for (const c of cycles) {
+    const total = real
+      .filter(e => e.paymentMethod === 'credit_card' && e.date >= c.start && e.date <= c.end)
+      .reduce((s, e) => s + e.amount, 0);
+    if (total <= 0) continue;
+    const cs  = new Date(c.start + 'T12:00:00');
+    const fol = new Date(cs.getFullYear(), cs.getMonth() + 1, 3);
+    const dt  = isoDate(fol);
+    const [y, m] = dt.slice(0,7).split('-');
+    newSums.push({
+      id: `cc_total_${y}_${m}`, date: dt,
+      segment: 'Outros', amount: +total.toFixed(2),
+      installments: 1, currentInstallment: 1,
+      paymentMethod: 'pix', isRecurring: false, recurringEndDate: null,
+      notes: 'Cartão de Crédito', _groupId: `cc_total_${y}_${m}`,
+      isCreditCardSummary: true,
+    });
+  }
+  const merged = [...real, ...newSums];
+  if (JSON.stringify(merged) !== JSON.stringify(expenses)) saveExp(merged);
+}
 // ════════════════════════════════════════════════════
 // CHART HELPERS
 // ════════════════════════════════════════════════════
@@ -688,40 +688,7 @@ function doExportGastos(expenses, pLabel) {
   XLSX.writeFile(wb, `gastos-${pLabel}-${todayISO()}.xlsx`);
 }
 
-function doExportFaturamentos(income, pLabel) {
-  if (!chkXLSX()) return;
-  const rows = [['Data','Conta','Cliente','Valor (R$)']];
-  for (const i of income) rows.push([fmtDate(i.date), i.account, i.client, Number(i.amount.toFixed(2))]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Faturamentos');
-  XLSX.writeFile(wb, `faturamentos-${pLabel}-${todayISO()}.xlsx`);
-}
 
-function doExportBalanco(expenses, income, pLabel) {
-  if (!chkXLSX()) return;
-  const wb = XLSX.utils.book_new();
-
-  const er = [['Data','Segmento','Valor (R$)','Parcelas','Meio','Recorrente']];
-  for (const e of expenses) {
-    er.push([fmtDate(e.date), e.segment, Number(e.amount.toFixed(2)),
-      e.installments > 1 ? `${e.currentInstallment}/${e.installments}` : 'À vista',
-      e.paymentMethod === 'credit_card' ? 'Cartão de crédito' : 'Pix',
-      e.isRecurring ? 'Sim' : 'Não']);
-  }
-
-  const ir = [['Data','Conta','Cliente','Valor (R$)']];
-  for (const i of income) ir.push([fmtDate(i.date), i.account, i.client, Number(i.amount.toFixed(2))]);
-
-  const totalE = expenses.reduce((s,e) => s+e.amount, 0);
-  const totalI = income.reduce((s,i)   => s+i.amount, 0);
-  const sr = [['Receitas (R$)','Gastos (R$)','Saldo (R$)'],
-              [Number(totalI.toFixed(2)), Number(totalE.toFixed(2)), Number((totalI-totalE).toFixed(2))]];
-
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(er), 'Gastos');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ir), 'Faturamentos');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sr), 'Resumo');
-  XLSX.writeFile(wb, `balanco-${pLabel}-${todayISO()}.xlsx`);
-}
 
 // ════════════════════════════════════════════════════
 // PERIOD FILTER HTML BUILDER
@@ -842,11 +809,28 @@ function deleteExpEntry(id) {
     S.pendingDeleteRecurring = { id, notes: e.notes, date: e.date };
     S.expandedEntry = { type: 'exp', id };
     renderSection(S.section);
+  } else if (e && e.installments > 1) {
+    S.pendingDeleteInstallment = { id, groupId: e._groupId, currentInstallment: e.currentInstallment, notes: e.notes };
+    S.expandedEntry = { type: 'exp', id };
+    renderSection(S.section);
   } else {
     saveExp(loadExp().filter(x => x.id !== id));
     S.expandedEntry = null;
     renderSection(S.section);
   }
+}
+
+function confirmDeleteInstallment(forward) {
+  if (!S.pendingDeleteInstallment) return;
+  const { id, groupId, currentInstallment } = S.pendingDeleteInstallment;
+  if (forward) {
+    saveExp(loadExp().filter(e => !(e._groupId === groupId && e.currentInstallment >= currentInstallment)));
+  } else {
+    saveExp(loadExp().filter(e => e.id !== id));
+  }
+  S.pendingDeleteInstallment = null;
+  S.expandedEntry = null;
+  renderSection(S.section);
 }
 
 function confirmDeleteRecurring(forward) {
@@ -862,30 +846,11 @@ function confirmDeleteRecurring(forward) {
   renderSection(S.section);
 }
 
-function saveIncEntry(id) {
-  const income = loadInc();
-  const idx = income.findIndex(i => i.id === id);
-  if (idx < 0) return;
-  const orig   = income[idx];
-  const date   = document.getElementById('ie-date-'   + id).value;
-  const acc    = document.getElementById('ie-acc-'    + id).value;
-  const client = document.getElementById('ie-client-' + id).value.trim();
-  const val    = parseFloat(document.getElementById('ie-val-'   + id).value);
-  const notes  = document.getElementById('ie-notes-'  + id).value.trim();
-  if (!date || !acc || !client || isNaN(val) || val <= 0) return;
-  income[idx] = { ...orig, date, account: acc, client, amount: val, notes };
-  saveInc(income);
-  S.expandedEntry = null;
-  renderSection(S.section);
-}
-
-function deleteIncEntry(id) {
-  saveInc(loadInc().filter(i => i.id !== id));
-  S.expandedEntry = null;
-  renderSection(S.section);
-}
-
 function expenseEntryHtml(e) {
+  // CC summary: no interaction
+  if (e.isCreditCardSummary) {
+    return '<div class="entry-item entry-cc-summary"><div class="entry-header" style="cursor:default"><div class="entry-main"><div class="entry-label">Cartão de Crédito</div><div class="entry-tags"><span class="tag tag-seg">automático</span></div></div><div class="entry-right"><div class="entry-amount">' + brl(e.amount) + '</div><div class="entry-date-small">' + fmtDate(e.date) + '</div></div></div></div>';
+  }
   const isOpen    = S.expandedEntry && S.expandedEntry.type === 'exp' && S.expandedEntry.id === e.id;
   const label     = e.notes ? esc(e.notes) : esc(e.segment);
   const segTag    = `<span class="tag tag-seg">${esc(e.segment)}</span>`;
@@ -895,12 +860,13 @@ function expenseEntryHtml(e) {
       ? '<span class="tag tag-status">recorrente</span>'
       : '';
   const methodTag = `<span class="tag tag-method">${e.paymentMethod === 'credit_card' ? 'Crédito' : 'Pix'}</span>`;
+  const pixTag    = e.paymentMethod === 'pix' ? '<span class="tag tag-pix">Pix</span>' : '';
 
   const header = `
     <div class="entry-header" onclick="toggleEntry('exp','${e.id}')">
       <div class="entry-main">
         <div class="entry-label">${label}</div>
-        <div class="entry-tags">${segTag}${statusTag}</div>
+        <div class="entry-tags">${segTag}${statusTag}${pixTag}</div>
       </div>
       <div class="entry-right">
         <div class="entry-amount">${brl(e.amount)}</div>
@@ -909,6 +875,17 @@ function expenseEntryHtml(e) {
     </div>`;
 
   if (!isOpen) return `<div class="entry-item">${header}</div>`;
+  // Delete confirm prompt (installments)
+  if (S.pendingDeleteInstallment && S.pendingDeleteInstallment.id === e.id) {
+    return '<div class="entry-item entry-open">' + header +
+      '<div class="entry-edit" style="text-align:center">' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Apagar só esta parcela ou esta e todas as seguintes?</div>' +
+      '<div class="edit-actions" style="justify-content:center;gap:10px">' +
+      '<button class="btn btn-outline" style="flex:1" onclick="confirmDeleteInstallment(false)">Só esta</button>' +
+      '<button class="btn-del" style="flex:1" onclick="confirmDeleteInstallment(true)">Esta e seguintes</button>' +
+      '</div></div></div>';
+  }
+
 
   // Delete confirm prompt (recurring)
   if (S.pendingDeleteRecurring && S.pendingDeleteRecurring.id === e.id) {
@@ -978,61 +955,6 @@ function expenseEntryHtml(e) {
   return `<div class="entry-item entry-open">${header}${form}</div>`;
 }
 
-function incomeEntryHtml(i) {
-  const isOpen    = S.expandedEntry && S.expandedEntry.type === 'inc' && S.expandedEntry.id === i.id;
-  const label     = i.notes ? esc(i.notes) : esc(i.client);
-  const accTag    = `<span class="tag tag-seg">${esc(i.account)}</span>`;
-  const clientTag = i.notes ? `<span class="tag tag-status">${esc(i.client)}</span>` : '';
-  const recTag    = i.isRecurring ? '<span class="tag tag-status">recorrente</span>' : '';
-
-  const header = `
-    <div class="entry-header" onclick="toggleEntry('inc','${i.id}')">
-      <div class="entry-main">
-        <div class="entry-label">${label}</div>
-        <div class="entry-tags">${accTag}${clientTag}${recTag}</div>
-      </div>
-      <div class="entry-right">
-        <div class="entry-amount positive">${brl(i.amount)}</div>
-        <div class="entry-date-small">${fmtDate(i.date)}</div>
-      </div>
-    </div>`;
-
-  if (!isOpen) return `<div class="entry-item">${header}</div>`;
-
-  const accOpts = ACCOUNTS.map(a =>
-    `<option value="${esc(a)}"${i.account === a ? ' selected' : ''}>${esc(a)}</option>`
-  ).join('');
-
-  const form = `
-    <div class="entry-edit">
-      <div class="edit-row">
-        <label class="form-label">Data</label>
-        <input type="date" id="ie-date-${i.id}" value="${i.date}">
-      </div>
-      <div class="edit-row">
-        <label class="form-label">Conta</label>
-        <select id="ie-acc-${i.id}">${accOpts}</select>
-      </div>
-      <div class="edit-row">
-        <label class="form-label">Cliente</label>
-        <input type="text" id="ie-client-${i.id}" value="${esc(i.client)}" maxlength="120">
-      </div>
-      <div class="edit-row">
-        <label class="form-label">Valor (R$)</label>
-        <input type="number" id="ie-val-${i.id}" step="0.01" value="${i.amount.toFixed(2)}">
-      </div>
-      <div class="edit-row">
-        <label class="form-label">Notas</label>
-        <input type="text" id="ie-notes-${i.id}" value="${esc(i.notes || '')}" maxlength="120">
-      </div>
-      <div class="edit-actions">
-        <button class="btn btn-primary" style="flex:1;margin-top:0" onclick="saveIncEntry('${i.id}')">Salvar</button>
-        <button class="btn-del" onclick="deleteIncEntry('${i.id}')">Apagar</button>
-      </div>
-    </div>`;
-
-  return `<div class="entry-item entry-open">${header}${form}</div>`;
-}
 
 function getNavCycleRange(offset) {
   const cs  = cycleStart();
@@ -1043,9 +965,8 @@ function getNavCycleRange(offset) {
   return { start: isoDate(s), end: isoDate(end), label: fmtCycleLabel(isoDate(s)), isFuture: offset > 0 };
 }
 function navMonth(section, dir) {
-  if (section === 'gastos')  { S.gastosNavOffset  += dir; S.gastosSegFilter = null; }
-  else if (section === 'balanco') { S.balancoNavOffset += dir; }
-  else                            { S.fatNavOffset     += dir; S.fatAccFilter    = null; }
+  if (section === 'cartao') { S.cartaoNavOffset += dir; S.cartaoSegFilter = null; S.expandedSegCard = null; }
+  else if (section === 'pix')    { S.pixNavOffset    += dir; S.pixSegFilter    = null; S.expandedSegCard = null; }
   S.expandedEntry = null;
   renderSection(S.section);
 }
@@ -1054,52 +975,40 @@ function toggleSegCard(el) {
   if (sc) S.cardsScrollLeft = sc.scrollLeft;
   const seg = el.dataset ? el.dataset.s : el;
   S.expandedSegCard = (S.expandedSegCard === seg) ? null : seg;
-  if (S.section === 'gastos') S.gastosSegFilter = S.expandedSegCard || null;
+  if (S.section === 'cartao') S.gastosSegFilter = S.expandedSegCard || null;
   renderSection(S.section);
 }
 // ════════════════════════════════════════════════════
 // SECTION 1 — HOME
 // ════════════════════════════════════════════════════
 function renderHome() {
-  const el  = document.getElementById('section-home');
-  const tab = S.homeTab;
-  let formHtml = '';
-  if      (tab === 'gastos')       formHtml = '<div class="form-wrap">' + gastosFormHtml() + '</div>';
-  else if (tab === 'faturamentos') formHtml = '<div class="form-wrap">' + faturamentosFormHtml() + '</div>';
+  const el = document.getElementById('section-home');
   el.innerHTML =
-    '<div class="home-action-btns">' +
-    '<button class="home-btn home-btn-gasto" onclick="toggleHomeTab(\'gastos\')">' +
-    '<span class="home-btn-icon">−</span><span class="home-btn-label">Novo Gasto</span>' +
-    '</button>' +
-    '<button class="home-btn home-btn-fat" onclick="toggleHomeTab(\'faturamentos\')">' +
-    '<span class="home-btn-icon">+</span><span class="home-btn-label">Novo Faturamento</span>' +
-    '</button></div>' +
-    formHtml;
+    '<div style="padding:8px 0 16px">' +
+    '<button class="btn-novo-cartao" onclick="toggleHomeForm()">' +
+    (S.homeFormOpen ? '✕ Fechar' : '+ Novo Gasto') + '</button>' +
+    (S.homeFormOpen ? expenseFormHtml(null) : '') +
+    '</div>';
 }
-
-function toggleHomeTab(tab) {
-  S.homeTab       = S.homeTab === tab ? null : tab;
-  S.meioSelected  = 'credit_card';
+function toggleHomeForm() {
+  S.homeFormOpen = !S.homeFormOpen;
+  if (S.homeFormOpen) { S.gastoTipo = 'avista'; S.meioSelected = 'credit_card'; }
   renderHome();
 }
 
-/* ─── GASTOS FORM ─── */
-function gastosFormHtml() {
+/* ─── EXPENSE FORM ─── */
+function expenseFormHtml(lockedMethod) {
   const segOpts = SEGMENTS.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-  const mCC = S.meioSelected === 'credit_card';
   const tipo = S.gastoTipo || 'avista';
-  return `
-    <form onsubmit="submitGasto(event)">
+  const mCC  = (lockedMethod || S.meioSelected) === 'credit_card';
+  return `<div class="form-card">
+    <form onsubmit="submitGasto(event)" data-locked="${lockedMethod || ''}">
       <div class="form-group">
-        <label class="form-label">Notas</label>
-        <input type="text" id="g-notes" placeholder="Descrição ou referência" maxlength="120">
+        <label class="form-label">Descrição</label>
+        <input type="text" id="g-notes" placeholder="Ex: iFood, Netflix…" maxlength="120">
       </div>
       <div class="form-group">
-        <label class="form-label">Data</label>
-        <input type="date" id="g-date" value="${todayISO()}" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Segmento</label>
+        <label class="form-label">Categoria</label>
         <select id="g-seg" required><option value="">Selecione…</option>${segOpts}</select>
       </div>
       <div class="form-group">
@@ -1107,12 +1016,16 @@ function gastosFormHtml() {
         <input type="number" id="g-valor" step="0.01" min="0.01" placeholder="0,00" required>
       </div>
       <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" id="g-date" value="${todayISO()}" required>
+      </div>
+      ${!lockedMethod ? `<div class="form-group">
         <label class="form-label">Meio de pagamento</label>
         <div class="toggle-group">
           <button type="button" id="btn-cc"  class="toggle-btn${mCC?' selected':''}"  onclick="selectMeio('credit_card')">Cartão</button>
           <button type="button" id="btn-pix" class="toggle-btn${!mCC?' selected':''}" onclick="selectMeio('pix')">Pix</button>
         </div>
-      </div>
+      </div>` : ''}
       <div class="form-group">
         <label class="form-label">Tipo</label>
         <div class="toggle-group">
@@ -1136,9 +1049,9 @@ function gastosFormHtml() {
         <input type="date" id="g-termina">
       </div>
       <button type="submit" class="btn btn-primary">Adicionar gasto</button>
-    </form>`;
+    </form>
+  </div>`;
 }
-
 function selectMeio(val) {
   S.meioSelected = val;
   const cc  = document.getElementById('btn-cc');
@@ -1167,11 +1080,14 @@ function submitGasto(ev) {
   const segment = document.getElementById('g-seg').value;
   const valor   = parseFloat(document.getElementById('g-valor').value);
   const notes   = document.getElementById('g-notes') ? document.getElementById('g-notes').value.trim() : '';
-  const tipo    = S.gastoTipo || 'avista';
+  const form        = ev.target;
+  const lockedMethod = form.getAttribute('data-locked') || null;
+  const tipo         = S.gastoTipo || 'avista';
   if (!date || !segment || isNaN(valor) || valor <= 0) return;
 
-  const groupId = uid();
-  const newExps = [];
+  const groupId      = uid();
+  const payMethod    = lockedMethod || S.meioSelected;
+  const newExps      = [];
 
   if (tipo === 'parc') {
     const pRaw     = parseInt((document.getElementById('g-parcelas') || {}).value, 10);
@@ -1180,92 +1096,25 @@ function submitGasto(ev) {
     const inicial  = (!iRaw || iRaw < 1) ? 1 : Math.min(iRaw, parcelas);
     for (let k = inicial; k <= parcelas; k++) {
       newExps.push({ id:uid(), date:addMonths(date, k - inicial), segment, amount:valor,
-        installments:parcelas, currentInstallment:k, paymentMethod:S.meioSelected,
+        installments:parcelas, currentInstallment:k, paymentMethod:payMethod,
         isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
     }
   } else if (tipo === 'rec') {
     const te = document.getElementById('g-termina');
     newExps.push({ id:uid(), date, segment, amount:valor, installments:1, currentInstallment:1,
-      paymentMethod:S.meioSelected, isRecurring:true, recurringEndDate:(te&&te.value?te.value:null),
+      paymentMethod:payMethod, isRecurring:true, recurringEndDate:(te&&te.value?te.value:null),
       notes, _groupId:groupId });
   } else {
     newExps.push({ id:uid(), date, segment, amount:valor, installments:1, currentInstallment:1,
-      paymentMethod:S.meioSelected, isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
+      paymentMethod:payMethod, isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
   }
 
   saveExp([...loadExp(), ...newExps]);
-  if (tipo === 'rec') generateRecurring(); // expand 24 months immediately after adding
-  S.homeTab = null; S.gastoTipo = 'avista'; S.meioSelected = 'credit_card';
-  if (S.section === 'gastos') { S.gastosFormOpen = false; renderSection('gastos'); }
-  else renderHome();
-}
-/* ─── FATURAMENTOS FORM ─── */
-function selectFatTipo(tipo) {
-  S.fatTipo = tipo;
-  ['unico','rec'].forEach(t => {
-    const b = document.getElementById('f-tipo-' + t);
-    if (b) b.classList.toggle('selected', t === tipo);
-  });
-  const rw = document.getElementById('f-rec-wrap');
-  if (rw) rw.style.display = tipo === 'rec' ? 'block' : 'none';
-}
-
-function faturamentosFormHtml() {
-  const accOpts = ACCOUNTS.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
-  const tipo = S.fatTipo || 'unico';
-  return `
-    <form onsubmit="submitFaturamento(event)"><div class="form-group"><label class="form-label">Notas</label><input type="text" id="f-notes" placeholder="Descrição ou referência" maxlength="120"></div>
-      <div class="form-group">
-        <label class="form-label">Data</label>
-        <input type="date" id="f-date" value="${todayISO()}" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Conta</label>
-        <select id="f-conta" required><option value="">Selecione…</option>${accOpts}</select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Cliente</label>
-        <input type="text" id="f-cliente" placeholder="Nome do cliente" required maxlength="120">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Valor (R$)</label>
-        <input type="number" id="f-valor" step="0.01" min="0.01" placeholder="0,00" required>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Tipo</label>
-        <div class="toggle-group">
-          <button type="button" id="f-tipo-unico" class="toggle-btn${tipo==='unico'?' selected':''}" onclick="selectFatTipo('unico')">Único</button>
-          <button type="button" id="f-tipo-rec"   class="toggle-btn${tipo==='rec'?' selected':''}"   onclick="selectFatTipo('rec')">Recorrente</button>
-        </div>
-      </div>
-      <div id="f-rec-wrap" style="display:${tipo==='rec'?'block':'none'};margin-top:10px">
-        <label class="form-label">Termina em (opcional)</label>
-        <input type="date" id="f-termina">
-      </div>
-      <button type="submit" class="btn btn-primary">Adicionar faturamento</button>
-    </form>`;
-}
-
-function submitFaturamento(ev) {
-  ev.preventDefault();
-  const date   = document.getElementById('f-date').value;
-  const account= document.getElementById('f-conta').value;
-  const client = document.getElementById('f-cliente').value.trim();
-  const valor  = parseFloat(document.getElementById('f-valor').value);
-  if (!date || !account || !client || isNaN(valor) || valor <= 0) return;
-  const fNotes = document.getElementById('f-notes') ? document.getElementById('f-notes').value.trim() : '';
-  const tipo   = S.fatTipo || 'unico';
-  const isRec  = tipo === 'rec';
-  const te     = document.getElementById('f-termina');
-  const recurEnd = (isRec && te && te.value) ? te.value : null;
-  const recurDay = isRec ? parseInt(date.split('-')[2], 10) : undefined;
-  const groupId  = uid();
-  const entry = { id: uid(), date, account, client, amount: valor, notes: fNotes,
-    isRecurring: isRec, recurringEndDate: recurEnd, _groupId: groupId };
-  if (isRec && recurDay) entry.recurringDay = recurDay;
-  saveInc([...loadInc(), entry]);
-  S.homeTab = null; S.fatTipo = 'unico';
-  renderHome();
+  if (tipo === 'rec') generateRecurring();
+  S.homeFormOpen = false; S.cartaoFormOpen = false; S.pixFormOpen = false;
+  S.gastoTipo = 'avista'; S.meioSelected = 'credit_card';
+  updateCreditCardSummaries();
+  renderSection(S.section);
 }
 
 /* ─── HOME SUMMARY ─── */
@@ -1323,44 +1172,29 @@ function exportHomeCycle() {
   doExportGastos(loadExp().filter(e => e.date >= cs && e.date <= today), 'ciclo-atual');
 }
 
-function toggleGastosForm() {
-  S.gastosFormOpen = !S.gastosFormOpen;
-  if (S.gastosFormOpen) { S.gastoTipo = 'avista'; S.meioSelected = 'credit_card'; }
-  renderSection('gastos');
+// ════════════════════════════════════════════════════
+// SECTION — CARTÃO
+// ════════════════════════════════════════════════════
+function toggleCartaoForm() {
+  S.cartaoFormOpen = !S.cartaoFormOpen;
+  if (S.cartaoFormOpen) { S.gastoTipo = 'avista'; }
+  renderSection('cartao');
 }
-// ════════════════════════════════════════════════════
-// SECTION 2 — GASTOS (analysis)
-// ════════════════════════════════════════════════════
-function renderGastos() {
-  const el   = document.getElementById('section-gastos');
-  const navR = getNavCycleRange(S.gastosNavOffset);
+function renderCartao() {
+  const el   = document.getElementById('section-cartao');
+  const navR = getNavCycleRange(S.cartaoNavOffset);
   const { start, end } = navR;
-  const allPeriodExp = loadExp().filter(e => e.date >= start && e.date <= end);
-  if (navR.isFuture || S.gastosNavOffset !== 0) {
-    const allRec = loadExp().filter(e => e.isRecurring);
-    console.log('[Gastos debug] offset=' + S.gastosNavOffset + ' range=' + start + ' to ' + end + ' | total=' + loadExp().length + ' matching=' + allPeriodExp.length + ' recurring=' + allRec.length);
-  }
+  const allExp = loadExp().filter(e => !e.isCreditCardSummary && e.paymentMethod === 'credit_card' && e.date >= start && e.date <= end);
+  const total  = allExp.reduce((s,e) => s+e.amount, 0);
 
-  // Totals
-  const totalGasto = allPeriodExp.reduce((s,e) => s+e.amount, 0);
-  const segTotals  = {};
+  const segTotals = {};
   SEGMENTS.forEach(s => segTotals[s] = 0);
-  allPeriodExp.forEach(e => { if (segTotals[e.segment]!==undefined) segTotals[e.segment]+=e.amount; });
+  allExp.forEach(e => { if (segTotals[e.segment]!==undefined) segTotals[e.segment]+=e.amount; });
   const sortedSegs = [...SEGMENTS].sort((a,b) => segTotals[b]-segTotals[a]);
-  const usedSegs   = sortedSegs.filter(s => segTotals[s] > 0);
-  const filterItems = [{label:'Todos',value:null}, ...usedSegs.map(s => ({label:s,value:s}))];
 
-  // Apply segment filter
-  const segF     = S.gastosSegFilter;
-  const expenses = segF ? allPeriodExp.filter(e => e.segment===segF) : allPeriodExp;
+  const segF = S.cartaoSegFilter;
+  const expenses = segF ? allExp.filter(e => e.segment===segF) : allExp;
 
-  // Doughnut (filtered)
-  const filtSegTotals = {};
-  SEGMENTS.forEach(s => filtSegTotals[s] = 0);
-  expenses.forEach(e => { if(filtSegTotals[e.segment]!==undefined) filtSegTotals[e.segment]+=e.amount; });
-  const filtUsedSegs = SEGMENTS.filter(s => filtSegTotals[s] > 0);
-
-  // Seg cards (expandable)
   const segCards = sortedSegs.map(s =>
     '<div class="' + (S.expandedSegCard===s?'seg-card seg-active':'seg-card') + '" onclick="toggleSegCard(this)" data-s="' + esc(s) + '">' +
     '<div class="seg-card-name">' + esc(s) + '</div>' +
@@ -1368,221 +1202,105 @@ function renderGastos() {
   ).join('');
   let expandedCardHtml = '';
   if (S.expandedSegCard) {
-    const segExp = allPeriodExp.filter(e => e.segment===S.expandedSegCard).sort((a,b) => b.date.localeCompare(a.date));
+    const segExp = allExp.filter(e => e.segment===S.expandedSegCard).sort((a,b) => b.date.localeCompare(a.date));
     expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(S.expandedSegCard) + '</div>' +
       buildExpListHtml(segExp, 'Sem gastos.') + '</div>';
   }
-
-  // When a card is expanded its inline list IS the list — suppress main list to avoid duplicates
   const showMainList = !S.expandedSegCard;
-  const sorted = showMainList ? applySortList(expenses, S.gastosSort) : [];
+  const sorted = showMainList ? applySortList(expenses, S.cartaoSort) : [];
   const list   = showMainList ? buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.') : '';
+  const projTag = navR.isFuture ? '<span class="proj-tag">projeção</span>' : '';
 
   el.innerHTML =
-    '<h1 class="section-title">Gastos</h1>' +
-    '<button class="btn-add-gasto" onclick="toggleGastosForm()">' + (S.gastosFormOpen ? '✕ Fechar' : '+ Novo Gasto') + '</button>' +
-    (S.gastosFormOpen ? '<div class="form-wrap" style="margin-bottom:16px">' + gastosFormHtml() + '</div>' : '') +
-    '<div class="month-nav"><div class="month-nav-arrows"><button class="month-nav-btn" onclick="navMonth(\'gastos\',-1)">&#8249;</button><span class="month-nav-label">' + navR.label + '</span><button class="month-nav-btn" onclick="navMonth(\'gastos\',1)">&#8250;</button></div><div class="month-nav-total">' + brl(totalGasto) + '</div></div>' +
-    (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
-
+    '<h1 class="section-title">Cartão</h1>' +
+    '<button class="btn-novo-cartao" onclick="toggleCartaoForm()">' + (S.cartaoFormOpen?'✕ Fechar':'+ Novo Gasto') + '</button>' +
+    (S.cartaoFormOpen ? expenseFormHtml('credit_card') : '') +
+    '<div class="month-nav" style="margin-bottom:20px">' +
+    '<div class="month-nav-arrows">' +
+    '<button class="month-nav-btn nav-lime-btn" onclick="navMonth(\'cartao\',-1)">&#8249;</button>' +
+    '<span class="nav-lime-label" style="font-size:16px;font-weight:600;min-width:64px;text-align:center">' + navR.label + projTag + '</span>' +
+    '<button class="month-nav-btn nav-lime-btn" onclick="navMonth(\'cartao\',1)">&#8250;</button></div>' +
+    '<div class="month-nav-total nav-lime-label">' + brl(total) + '</div></div>' +
     '<div class="cards-scroll">' + segCards + '</div>' +
     expandedCardHtml +
+    (showMainList ? '<hr class="divider"><div class="list-header">Todos os gastos</div>' +
+    buildSortBar('cartaoSort') + '<div class="entry-list">' + list + '</div>' : '') + '';
 
-    (showMainList ? '<hr class="divider">' +
-    '<div class="list-header">Todos os gastos</div>' +
-    buildSortBar('gastosSort') +
-    '<div class="entry-list">' + list + '</div>' : '') +
-    '';
   requestAnimationFrame(() => {
     const sc = document.querySelector('.cards-scroll');
     if (sc && S.cardsScrollLeft) sc.scrollLeft = S.cardsScrollLeft;
   });
 }
 
-function exportGastosSection() {
-  const r = getNavCycleRange(S.gastosNavOffset);
-  doExportGastos(loadExp().filter(e => e.date >= r.start && e.date <= r.end), r.label);
-}
-
-// ════════════════════════════════════════════════════
-// SECTION 3 — FATURAMENTOS (analysis)
-// ════════════════════════════════════════════════════
-function renderFaturamentos() {
-  const el   = document.getElementById('section-faturamentos');
-  const navR = getNavCycleRange(S.fatNavOffset);
-  const { start, end } = navR;
-  const allPeriodInc = loadInc().filter(i => i.date >= start && i.date <= end);
-
-  const totalRec  = allPeriodInc.reduce((s,i) => s+i.amount, 0);
-  const accTotals = {};
-  ACCOUNTS.forEach(a => accTotals[a] = 0);
-  allPeriodInc.forEach(i => { if(accTotals[i.account]!==undefined) accTotals[i.account]+=i.amount; });
-  const usedAccs    = ACCOUNTS.filter(a => accTotals[a] > 0);
-  const filterItems = [{label:'Todos',value:null}, ...usedAccs.map(a => ({label:a,value:a}))];
-
-  const accF   = S.fatAccFilter;
-  const income = accF ? allPeriodInc.filter(i => i.account===accF) : allPeriodInc;
-
-  const sorted = applySortList(income, S.fatSort);
-  const list   = sorted.length===0
-    ? '<div class="empty-state">Nenhum faturamento em ' + navR.label + '.</div>'
-    : sorted.map(i => incomeEntryHtml(i)).join('');
-
-  // Doughnut by account
-  const chartAccs = accF ? usedAccs.filter(a=>a===accF) : usedAccs;
-
-  el.innerHTML =
-    '<h1 class="section-title">Faturamentos</h1>' +
-    '<div class="month-nav"><div class="month-nav-arrows"><button class="month-nav-btn" onclick="navMonth(\'fat\',-1)">&#8249;</button><span class="month-nav-label">' + navR.label + '</span><button class="month-nav-btn" onclick="navMonth(\'fat\',1)">&#8250;</button></div><div class="month-nav-total positive">' + brl(totalRec) + '</div></div>' +
-    (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
-    buildFilterTags('fatAccFilter', filterItems) +
-    (chartAccs.length > 0 ?
-      '<div class="chart-title">Distribuição por conta</div><div class="chart-wrap" style="height:220px"><canvas id="chart-f-donut"></canvas></div>' : '') +
-    '<hr class="divider">' +
-    '<div class="list-header">Todos os faturamentos</div>' +
-    buildSortBar('fatSort') +
-    '<div class="entry-list">' + list + '</div>' +
-    '';
-
-  if (chartAccs.length > 0) {
-    mkChart('chart-f-donut', 'doughnut', {
-      labels: chartAccs,
-      datasets: [{ data: chartAccs.map(a=>accTotals[a]), backgroundColor: CHART_COLORS.slice(0,chartAccs.length), borderWidth:0, hoverOffset:4 }]
-    }, { cutout: '55%' });
-  }
-}
-
-function exportFatSection() {
-  const r = getNavCycleRange(S.fatNavOffset);
-  doExportFaturamentos(loadInc().filter(i => i.date >= r.start && i.date <= r.end), r.label);
-}
-
-// ════════════════════════════════════════════════════
-// SECTION 4 — BALANÇO GERAL
-// ════════════════════════════════════════════════════
-function renderBalanco() {
-  const el   = document.getElementById('section-balanco');
-  const navR = getNavCycleRange(S.balancoNavOffset);
-  const { start, end } = navR;
-  const allExp = loadExp(), allInc = loadInc();
-
-  const expenses = allExp.filter(e => e.date >= start && e.date <= end);
-  const income   = allInc.filter(i => i.date >= start && i.date <= end);
-
-  const totalE = expenses.reduce((s,e) => s+e.amount, 0);
-  const totalI = income.reduce((s,i)   => s+i.amount, 0);
-  const saldo  = totalI - totalE;
-
-  // Saldo disponível projection (always current cycle, independent of nav)
-  const saldoDisp = DB.saldo;
-  const csISO = isoDate(cycleStart()), todayStr = todayISO();
-  const cycleExpCur = allExp.filter(e => e.date >= csISO && e.date <= todayStr);
-  const cycleIncCur = allInc.filter(i => i.date >= csISO && i.date <= todayStr);
-  const projecao = saldoDisp + cycleIncCur.reduce((s,i)=>s+i.amount,0) - cycleExpCur.reduce((s,e)=>s+e.amount,0);
-
-  // Bar chart: 6 cycles relative to selected nav month
-  const cycles = lastNCyclesRelativeTo(6, S.balancoNavOffset);
-  const cycleE = cycles.map(c => allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((s,e) => s+e.amount, 0));
-  const cycleI = cycles.map(c => allInc.filter(i => i.date >= c.start && i.date <= c.end).reduce((s,i) => s+i.amount, 0));
-
-  // Inline projeção tag
-  const projTag = navR.isFuture ? ' <span class="month-nav-proj">projeção</span>' : '';
-
-  el.innerHTML = `
-    <h1 class="section-title">Balanço geral</h1>
-    <div class="month-nav">
-      <div class="month-nav-arrows">
-        <button class="month-nav-btn" onclick="navMonth('balanco',-1)">&#8249;</button>
-        <span class="month-nav-label">${navR.label}${projTag}</span>
-        <button class="month-nav-btn" onclick="navMonth('balanco',1)">&#8250;</button>
-      </div>
-      <div class="month-nav-total ${saldo >= 0 ? 'positive' : 'negative'}">${brl(saldo)}</div>
-    </div>
-    <div class="saldo-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div class="card-label">Saldo disponível</div>
-        <button class="saldo-edit-btn" onclick="toggleSaldoEdit()">editar</button>
-      </div>
-      <div id="saldo-display">
-        <span class="card-value">${brl(saldoDisp)}</span>
-      </div>
-      <div id="saldo-input-wrap" style="display:none;margin-top:6px">
-        <input type="number" id="saldo-input" value="${saldoDisp.toFixed(2)}" step="0.01"
-               onkeydown="if(event.key==='Enter')saveSaldo(this)"
-               onblur="saveSaldo(this)" style="max-width:200px">
-      </div>
-      <div class="saldo-projection">
-        Projeção fim do ciclo:
-        <span class="${projecao >= 0 ? 'positive' : 'negative'}">${brl(projecao)}</span>
-      </div>
-    </div>
-    <div class="summary-cards">
-      <div class="summary-card">
-        <div class="card-label">Receitas</div>
-        <div class="card-value positive">${brl(totalI)}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-label">Gastos</div>
-        <div class="card-value">${brl(totalE)}</div>
-      </div>
-      <div class="summary-card">
-        <div class="card-label">Saldo</div>
-        <div class="card-value ${saldo >= 0 ? 'positive' : 'negative'}">${brl(saldo)}</div>
-      </div>
-    </div>
-    <div class="chart-title">Receitas vs gastos por ciclo</div>
-    <div class="chart-wrap" style="height:200px"><canvas id="chart-b-bar"></canvas></div>
-`;
-
-  const legendFont = { size: 11, family: "'DM Sans',sans-serif" };
-  mkChart('chart-b-bar', 'bar', {
-    labels: cycles.map(c => c.label),
-    datasets: [
-      { label: 'Receitas', data: cycleI, backgroundColor: 'rgba(198,255,51,0.7)', borderRadius: 3, borderSkipped: false },
-      { label: 'Gastos',   data: cycleE, backgroundColor: 'rgba(125,57,235,0.7)', borderRadius: 3, borderSkipped: false }
-    ]
-  }, {
-    plugins: {
-      legend: { display: true, position: 'bottom',
-        labels: { color: 'rgba(255,255,255,0.6)', font: legendFont, boxWidth: 10, boxHeight: 10, padding: 12 }
-      }
-    },
-    scales: {
-      y: { display: false },
-      x: { grid: { display: false }, border: { display: false } }
-    }
-  });
-}
-
-function toggleSaldoEdit() {
-  const display   = document.getElementById('saldo-display');
-  const inputWrap = document.getElementById('saldo-input-wrap');
-  const input     = document.getElementById('saldo-input');
-  if (inputWrap.style.display === 'none') {
-    display.style.display   = 'none';
-    inputWrap.style.display = 'block';
-    input.focus();
-    input.select();
-  } else {
-    saveSaldo(input);
-  }
-}
-
-function saveSaldo(input) {
-  const val = parseFloat(input.value);
-  setSaldo(isNaN(val) ? 0 : parseFloat(val.toFixed(2)));
-  renderSection('balanco');
-}
-
-function exportBalancoSection() {
+ {
   const { start, end } = getPeriodRange(S.balancoPeriod, S.balancoFrom, S.balancoTo);
   doExportBalanco(
     loadExp().filter(e => e.date >= start && e.date <= end),
-    loadInc().filter(i => i.date >= start && i.date <= end),
     periodLabel(S.balancoPeriod, S.balancoFrom, S.balancoTo)
   );
 }
 
+// ════════════════════════════════════════════════════
+// SECTION — PIX
+// ════════════════════════════════════════════════════
+function togglePixForm() {
+  S.pixFormOpen = !S.pixFormOpen;
+  if (S.pixFormOpen) { S.gastoTipo = 'avista'; }
+  renderSection('pix');
+}
+function renderPix() {
+  const el   = document.getElementById('section-pix');
+  const navR = getNavCycleRange(S.pixNavOffset);
+  const { start, end } = navR;
+  // Include CC summary entries in pix page
+  const allExp = loadExp().filter(e => e.paymentMethod === 'pix' && e.date >= start && e.date <= end);
+  const total  = allExp.reduce((s,e) => s+e.amount, 0);
+  const realExp = allExp.filter(e => !e.isCreditCardSummary);
+
+  const segTotals = {};
+  SEGMENTS.forEach(s => segTotals[s] = 0);
+  realExp.forEach(e => { if (segTotals[e.segment]!==undefined) segTotals[e.segment]+=e.amount; });
+  const sortedSegs = [...SEGMENTS].sort((a,b) => segTotals[b]-segTotals[a]);
+
+  const segF = S.pixSegFilter;
+  const expenses = segF ? allExp.filter(e => e.segment===segF) : allExp;
+
+  const segCards = sortedSegs.map(s =>
+    '<div class="' + (S.expandedSegCard===s?'seg-card seg-active':'seg-card') + '" onclick="toggleSegCard(this)" data-s="' + esc(s) + '">' +
+    '<div class="seg-card-name">' + esc(s) + '</div>' +
+    '<div class="seg-card-amount">' + brl(segTotals[s]) + '</div></div>'
+  ).join('');
+  let expandedCardHtml = '';
+  if (S.expandedSegCard) {
+    const segExp = allExp.filter(e => e.segment===S.expandedSegCard).sort((a,b)=>b.date.localeCompare(a.date));
+    expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(S.expandedSegCard) + '</div>' +
+      buildExpListHtml(segExp, 'Sem gastos.') + '</div>';
+  }
+  const showMainList = !S.expandedSegCard;
+  const sorted = showMainList ? applySortList(expenses, S.pixSort) : [];
+  const list   = showMainList ? buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.') : '';
+  const projTag = navR.isFuture ? '<span class="proj-tag">projeção</span>' : '';
+
+  el.innerHTML =
+    '<h1 class="section-title">Pix</h1>' +
+    '<button class="btn-novo-pix" onclick="togglePixForm()">' + (S.pixFormOpen?'✕ Fechar':'+ Novo Gasto') + '</button>' +
+    (S.pixFormOpen ? expenseFormHtml('pix') : '') +
+    '<div class="month-nav" style="margin-bottom:20px">' +
+    '<div class="month-nav-arrows">' +
+    '<button class="month-nav-btn nav-lime-btn" onclick="navMonth(\'pix\',-1)">&#8249;</button>' +
+    '<span class="nav-lime-label" style="font-size:16px;font-weight:600;min-width:64px;text-align:center">' + navR.label + projTag + '</span>' +
+    '<button class="month-nav-btn nav-lime-btn" onclick="navMonth(\'pix\',1)">&#8250;</button></div>' +
+    '<div class="month-nav-total nav-lime-label">' + brl(total) + '</div></div>' +
+    '<div class="cards-scroll">' + segCards + '</div>' +
+    expandedCardHtml +
+    (showMainList ? '<hr class="divider"><div class="list-header">Todos os gastos Pix</div>' +
+    buildSortBar('pixSort') + '<div class="entry-list">' + list + '</div>' : '') + '';
+
+  requestAnimationFrame(() => {
+    const sc = document.querySelector('.cards-scroll');
+    if (sc && S.cardsScrollLeft) sc.scrollLeft = S.cardsScrollLeft;
+  });
+}
 // ════════════════════════════════════════════════════
 // SECTION 5 — INSIGHTS
 // ════════════════════════════════════════════════════
@@ -1591,13 +1309,10 @@ function renderInsights() {
   const cs     = isoDate(cycleStart());
   const today  = todayISO();
   const allExp = loadExp();
-  const allInc = loadInc();
 
   /* cycle data */
   const cycleExp      = allExp.filter(e => e.date >= cs && e.date <= today);
   const cycleTotal    = cycleExp.reduce((s,e) => s+e.amount, 0);
-  const cycleInc      = allInc.filter(i => i.date >= cs && i.date <= today);
-  const cycleIncTotal = cycleInc.reduce((s,i) => s+i.amount, 0);
 
   /* 1. Segmento líder */
   let topSeg = null;
@@ -1646,14 +1361,6 @@ function renderInsights() {
     mostExpCycle = { label: fmtCycleLabel(k), total: v };
   }
 
-  /* 7. Mês com maior receita histórica */
-  let mostIncCycle = null;
-  if (allInc.length > 0) {
-    const by = {};
-    allInc.forEach(i => { const k=isoDate(cycleStart(i.date)); by[k]=(by[k]||0)+i.amount; });
-    const [k,v] = Object.entries(by).sort((a,b) => b[1]-a[1])[0];
-    mostIncCycle = { label: fmtCycleLabel(k), total: v };
-  }
 
   /* 8. Sequência de dias sem gastos */
   const expDates = new Set(allExp.map(e => e.date));
@@ -1698,16 +1405,11 @@ function renderInsights() {
   let bestSaldo=null, worstSaldo=null;
   for (const c of allCycles12) {
     const tE=allExp.filter(e=>e.date>=c.start&&e.date<=c.end).reduce((s,e)=>s+e.amount,0);
-    const tI=allInc.filter(i=>i.date>=c.start&&i.date<=c.end).reduce((s,i)=>s+i.amount,0);
-    const sl=tI-tE;
+    const sl = -tE;
     if(bestSaldo===null||sl>bestSaldo.saldo) bestSaldo={label:c.label,saldo:sl};
     if(worstSaldo===null||sl<worstSaldo.saldo) worstSaldo={label:c.label,saldo:sl};
   }
 
-  const clientTots={},accTots={};
-  allInc.forEach(i=>{clientTots[i.client]=(clientTots[i.client]||0)+i.amount;accTots[i.account]=(accTots[i.account]||0)+i.amount;});
-  const topClient=Object.entries(clientTots).sort((a,b)=>b[1]-a[1])[0];
-  const topAcc   =Object.entries(accTots).sort((a,b)=>b[1]-a[1])[0];
   /* ── HTML ── */
   const commitBarHtml = maxCommit > 0
     ? `<div class="mini-bar-list">${commitments.map(c => `
@@ -1727,7 +1429,7 @@ function renderInsights() {
     <h1 class="section-title">Insights</h1>
 
     <div class="insight-card">
-      <div class="insight-label">Segmento líder — ciclo atual</div>
+      <div class="insight-label">Categoria líder — ciclo atual</div>
       ${topSeg
         ? `<div class="insight-value">${esc(topSeg.name)}</div><div class="insight-sub">${brl(topSeg.amt)} · ${topSeg.pct}% do total</div>`
         : '<div class="insight-sub" style="margin-top:4px">Sem gastos registrados este ciclo.</div>'}
@@ -1746,39 +1448,7 @@ function renderInsights() {
       ${cycleTotal > 0 ? `<div class="insight-sub">${daysElapsed} dias decorridos no ciclo</div>` : ''}
     </div>
 
-    <div class="insight-card">
-      <div class="insight-label">Relação receita / gasto — ciclo atual</div>
-      ${relacao !== null
-        ? `<div class="insight-value">${relacao}%</div><div class="insight-sub">do faturamento comprometido em gastos</div>`
-        : '<div class="insight-sub" style="margin-top:4px">Sem receitas registradas este ciclo.</div>'}
-    </div>
-
-    <div class="insight-card">
-      <div class="insight-label">Comprometimento futuro — próximos 6 ciclos</div>
-      ${commitBarHtml}
-    </div>
-
-    <div class="insight-card">
-      <div class="insight-label">Mês com maior gasto histórico</div>
-      ${mostExpCycle
-        ? `<div class="insight-value">${brl(mostExpCycle.total)}</div><div class="insight-sub">${esc(mostExpCycle.label)}</div>`
-        : '<div class="insight-sub" style="margin-top:4px">Sem dados suficientes.</div>'}
-    </div>
-
-    <div class="insight-card">
-      <div class="insight-label">Mês com maior receita histórica</div>
-      ${mostIncCycle
-        ? `<div class="insight-value positive">${brl(mostIncCycle.total)}</div><div class="insight-sub">${esc(mostIncCycle.label)}</div>`
-        : '<div class="insight-sub" style="margin-top:4px">Sem dados suficientes.</div>'}
-    </div>
-
-    <div class="insight-card">
-      <div class="insight-label">Sequência atual sem gastos</div>
-      <div class="insight-value">${streak} ${streak === 1 ? 'dia' : 'dias'}</div>
-      <div class="insight-sub">${streak > 0 ? 'dias consecutivos sem nenhum gasto' : 'há gastos registrados hoje'}</div>
-    </div>
-
-    <div class="insight-card">
+<div class="insight-card">
       <div class="insight-label">Gasto médio por segmento — últimos 3 ciclos</div>
       ${segAvgHtml}
     </div>
@@ -1823,17 +1493,11 @@ function renderInsights() {
         : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
     </div>
 
-    <div class="insight-card">
-      <div class="insight-label">Cliente que mais gerou receita</div>
-      ${topClient
-        ? `<div class="insight-value">${esc(topClient[0])}</div><div class="insight-sub">${brl(topClient[1])} total histórico</div>`
+<div class="insight-sub">${brl(topClient[1])} total histórico</div>`
         : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
     </div>
 
-    <div class="insight-card">
-      <div class="insight-label">Conta que mais recebeu</div>
-      ${topAcc
-        ? `<div class="insight-value">${esc(topAcc[0])}</div><div class="insight-sub">${brl(topAcc[1])} total histórico</div>`
+<div class="insight-sub">${brl(topAcc[1])} total histórico</div>`
         : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
     </div>
 
@@ -1861,10 +1525,9 @@ function renderInsights() {
 // ════════════════════════════════════════════════════
 function renderSection(name) {
   destroyAllCharts();
-  if      (name === 'home')          renderHome();
-  else if (name === 'gastos')        renderGastos();
-  else if (name === 'faturamentos')  renderFaturamentos();
-  else if (name === 'balanco')       renderBalanco();
+  if      (name === 'home')    renderHome();
+  else if (name === 'cartao')  renderCartao();
+  else if (name === 'pix')     renderPix();
   else if (name === 'insights')      renderInsights();
 }
 
@@ -1901,8 +1564,8 @@ function doAuth(ev) {
     document.getElementById('app').style.display = '';
     document.getElementById('bottom-nav').style.display = '';
     generateRecurring();
-    generateRecurringIncome();
-    S.homeTab = 'gastos';
+    updateCreditCardSummaries();
+    S.homeFormOpen = true;
     showSection('home');
   } else {
     const err = document.getElementById('auth-error');
@@ -1928,14 +1591,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load cache immediately — no blocking
   loadFromCache();
   // One-time data wipe — runs once, then sets flag to skip forever
-  if (!localStorage.getItem('pf_wipe_done')) {
+  if (!localStorage.getItem('pf_wipe_v2')) {
     localStorage.removeItem('pf_expenses');
     localStorage.removeItem('pf_income');
     DB.expenses = [];
-    DB.income   = [];
     apiSet('pf_expenses', []);
     apiSet('pf_income',   []);
-    localStorage.setItem('pf_wipe_done', '1');
+    localStorage.setItem('pf_wipe_v2', '1');
   }
 
 
@@ -1946,8 +1608,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('app').style.display = '';
     document.getElementById('bottom-nav').style.display = '';
     generateRecurring();
-    generateRecurringIncome();
-    S.homeTab = 'gastos';
+    updateCreditCardSummaries();
+    S.homeFormOpen = true;
     showSection('home');
     // First load ever: show centered spinner until API responds
     const hasCacheData = DB.expenses.length > 0 || DB.income.length > 0;
