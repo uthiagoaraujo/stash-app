@@ -373,93 +373,124 @@ const S = {
   pendingDeleteInstallment: null,
 };
 // ════════════════════════════════════════════════════
-// MERGE HELPER — never lose local data on sync
-// ════════════════════════════════════════════════════
-function mergeExpenses(local, remote) {
-  // Purely additive union — never discard entries from either source
-  const byId = {};
-  for (const e of (remote || [])) byId[e.id] = e;
-  for (const e of (local  || [])) byId[e.id] = e; // local always wins conflicts (most recently written)
-  const merged = Object.values(byId);
-  console.log('[merge] local=' + (local||[]).length + ' remote=' + (remote||[]).length + ' merged=' + merged.length);
-  return merged;
-}
-// ════════════════════════════════════════════════════
-// API LAYER — Google Sheets backend, localStorage cache
+// DATA LAYER — localStorage is the source of truth
 // ════════════════════════════════════════════════════
 const API_URL = 'https://script.google.com/macros/s/AKfycbxIWWtCbYiwbXN8CLx1BxwwITgntQbbLJyDnyC0NSk_v6Owbsvh9F1OfpCabvRnfHGdfg/exec';
 const DB = { expenses: [] };
 
-async function apiGet(key) {
-  try {
-    const r = await fetch(API_URL + '?key=' + encodeURIComponent(key));
-    if (!r.ok) return null;
-    const txt = await r.text();
-    if (!txt || txt.trim() === '' || txt.trim() === 'null') return null;
-    return JSON.parse(txt);
-  } catch(e) { return null; }
+// Read full array (includes deleted — for all save/merge operations)
+const loadExpAll = () => DB.expenses;
+// Read visible array (excludes deleted — for all UI rendering)
+const loadExp    = () => DB.expenses.filter(e => !e.deleted);
+
+const uid = () => crypto.randomUUID();
+
+// LOW-LEVEL: write DB → localStorage → upload Sheets (no side effects, no CCS)
+function _persist(arr) {
+  DB.expenses = arr;
+  localStorage.setItem('pf_expenses', JSON.stringify(arr));
+  console.log('SAVED: ' + arr.length + ' entries in localStorage');
+  apiSet('pf_expenses', arr).then(ok => {
+    console.log('[Sheets] ok=' + ok + ' | ' + arr.length + ' entries');
+    if (ok) { setSyncDot('green'); } else { setSyncDot('red'); }
+  });
 }
 
-async function apiSet(key, value) {
-  try {
-    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ key, value: JSON.stringify(value) }) });
-    return r.ok;
-  } catch(e) { return false; }
+// USER SAVE: step1=DB, step2=localStorage, step3=Sheets async, step4=recompute CCS
+function saveExp(arr) {
+  // Steps 1+2: synchronous, blocking — localStorage is updated before anything else
+  DB.expenses = arr;
+  localStorage.setItem('pf_expenses', JSON.stringify(arr));
+  console.log('SAVED: ' + arr.length + ' entries in localStorage');
+
+  // Step 3: async fire-and-forget upload to Sheets
+  showToast('Salvando...', 'saving', 0);
+  setSyncDot('red');
+  apiSet('pf_expenses', arr).then(ok => {
+    console.log('[Sheets] ok=' + ok + ' | ' + arr.length + ' entries');
+    if (ok) { showToast('✓ Sincronizado', 'success', 2000); setSyncDot('green'); }
+    else     { showToast('⚠ Salvo localmente', 'local', 4000); }
+  });
+
+  // Step 4: recompute CC summaries (uses _persist, never calls saveExp again)
+  _recomputeCCS();
 }
+
+// CC SUMMARY recompute — preserves deleted entries, uses _persist not saveExp
+function _recomputeCCS() {
+  const all     = DB.expenses;                          // full array, includes deleted
+  const real    = all.filter(e => !e.isCreditCardSummary); // strip old cc summaries only
+  const visible = real.filter(e => !e.deleted);         // live entries for computing totals
+
+  const cycleMap = {};
+  for (const e of visible) {
+    if (e.paymentMethod === 'credit_card') {
+      const cs = isoDate(cycleStart(e.date));
+      cycleMap[cs] = (cycleMap[cs] || 0) + e.amount;
+    }
+  }
+  const newSums = [];
+  for (const [csISO, total] of Object.entries(cycleMap)) {
+    if (total <= 0) continue;
+    const sumDate = addMonths(csISO, 1);
+    const [y, m] = sumDate.slice(0,7).split('-');
+    newSums.push({ id:'cc_total_'+y+'_'+m, date:sumDate, segment:'Outros',
+      amount:+total.toFixed(2), installments:1, currentInstallment:1,
+      paymentMethod:'pix', isRecurring:false, recurringEndDate:null,
+      notes:'Cartão de Crédito', _groupId:'cc_total_'+y+'_'+m, isCreditCardSummary:true });
+  }
+  // merged = real (keeps deleted entries) + fresh cc summaries
+  const merged = [...real, ...newSums];
+  if (JSON.stringify(merged) !== JSON.stringify(all)) {
+    _persist(merged); // direct persist — not saveExp (avoids recursion)
+  }
+}
+// Public alias kept for external callers
+function updateCreditCardSummaries() { _recomputeCCS(); }
 
 function loadFromCache() {
-  DB.expenses = JSON.parse(localStorage.getItem('pf_expenses') || '[]');
+  const raw = localStorage.getItem('pf_expenses');
+  DB.expenses = raw ? JSON.parse(raw) : [];
 }
 
+// BACKGROUND SYNC — additive only, localStorage always wins conflicts
 async function syncFromAPI(force) {
   const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'block';
   try {
     const re = await apiGet('pf_expenses');
-    let changed = false;
     if (Array.isArray(re)) {
-      const local   = [...DB.expenses];
-      const merged  = mergeExpenses(local, re);
-      const mStr    = JSON.stringify(merged);
-      if (mStr !== JSON.stringify(local)) { DB.expenses = merged; localStorage.setItem('pf_expenses', mStr); changed = true; }
-      // Always upload merged result back to Sheets to keep both in sync
-      if (mStr !== JSON.stringify(re)) { apiSet('pf_expenses', merged); }
+      const local    = DB.expenses;          // current localStorage array
+      const localMap = {};
+      for (const e of local) localMap[e.id] = true;
+
+      // Add ONLY entries whose id doesn't exist in localStorage — never overwrite
+      let added = 0;
+      const toAdd = [];
+      for (const e of re) {
+        if (!localMap[e.id]) { toAdd.push(e); added++; }
+      }
+      const merged = [...local, ...toAdd];
+      console.log('SYNC: localStorage had ' + local.length + ', Sheets had ' + re.length + ', merged result ' + merged.length);
+
+      if (added > 0) {
+        DB.expenses = merged;
+        localStorage.setItem('pf_expenses', JSON.stringify(merged));
+        apiSet('pf_expenses', merged); // push merged back to Sheets
+        renderSection(S.section);
+      } else if (local.length > re.length) {
+        // Local has more entries — upload local to Sheets to catch it up
+        apiSet('pf_expenses', local);
+        console.log('SYNC: uploaded local(' + local.length + ') to Sheets (Sheets was behind)');
+      }
     }
-    if (changed) renderSection(S.section);
     setSyncDot('green');
   } catch(e) { setSyncDot('red'); }
   if (bar) { bar.style.opacity = '0'; bar.style.transition = 'opacity 400ms'; setTimeout(() => { bar.style.display = 'none'; bar.style.opacity = '1'; bar.style.transition = ''; }, 420); }
   const fls = document.getElementById('first-load-spinner');
   if (fls) fls.style.display = 'none';
 }
-const CI = {}; // active Chart.js instances keyed by canvas id
 
-// ════════════════════════════════════════════════════
-// DATA LAYER
-// ════════════════════════════════════════════════════
-const loadExp = () => DB.expenses;
-let _lastLocalSave = 0;  // timestamp of last local write (guards syncFromAPI overwrite)
-let _ccsRunning    = false; // prevents infinite recursion in updateCreditCardSummaries
-function saveExp(arr) {
-  const _prev = DB.expenses.length;
-  DB.expenses = arr;
-  localStorage.setItem('pf_expenses', JSON.stringify(arr));
-  console.log('[saveExp] localStorage: ' + arr.length + ' entries (was ' + _prev + ') | uploading to Sheets');
-  _lastLocalSave = Date.now();
-  showToast('Salvando...', 'saving', 0);
-  setSyncDot('red');
-  apiSet('pf_expenses', arr).then(ok => {
-    console.log('[apiSet] ok=' + ok + ' | Sheets target: ' + arr.length + ' entries');
-    if (ok) { showToast('✓ Sincronizado', 'success', 2000); setSyncDot('green'); }
-    else     { showToast('⚠ Salvo localmente', 'local', 4000); }
-  });
-  if (!_ccsRunning) {
-    _ccsRunning = true;
-    try { updateCreditCardSummaries(); } catch(e) {}
-    _ccsRunning = false;
-  }
-}
-const uid = () => crypto.randomUUID();
 
 // ════════════════════════════════════════════════════
 // DATE & CYCLE UTILITIES
@@ -538,7 +569,7 @@ function periodLabel(period, from, to) {
 // RECURRING GENERATION  (called once on app load)
 // ════════════════════════════════════════════════════
 function generateRecurring() {
-  const expenses = loadExp();
+  const expenses = loadExpAll();
   const today    = todayISO();
   const limit    = addMonths(today, 24);
 
@@ -861,7 +892,7 @@ function eeSelectMeio(eid, val) {
 }
 
 function saveExpEntry(id) {
-  const expenses = loadExp();
+  const expenses = loadExpAll();
   const idx = expenses.findIndex(e => e.id === id);
   if (idx < 0) return;
   const orig  = expenses[idx];
@@ -886,7 +917,7 @@ function applyGroupEdit(applyAll) {
   if (!S.pendingGroupEdit) return;
   if (applyAll) {
     const { groupId, origNotes, newSeg, newNotes, newAmt, isRec } = S.pendingGroupEdit;
-    const updated = loadExp().map(e => {
+    const updated = loadExpAll().map(e => {
       if (isRec) {
         return (e.isRecurring && e.notes === origNotes)
           ? { ...e, segment: newSeg, notes: newNotes, amount: newAmt } : e;
@@ -911,7 +942,7 @@ function deleteExpEntry(id) {
     S.expandedEntry = { type: 'exp', id };
     renderSection(S.section);
   } else {
-    saveExp(loadExp().map(x => x.id === id ? {...x, deleted: true} : x));
+    saveExp(loadExpAll().map(x => x.id === id ? {...x, deleted: true} : x));
     S.expandedEntry = null;
     renderSection(S.section);
   }
@@ -921,9 +952,9 @@ function confirmDeleteInstallment(forward) {
   if (!S.pendingDeleteInstallment) return;
   const { id, groupId, currentInstallment } = S.pendingDeleteInstallment;
   if (forward) {
-    saveExp(loadExp().map(e => (e._groupId === groupId && e.currentInstallment >= currentInstallment) ? {...e, deleted:true} : e));
+    saveExp(loadExpAll().map(e => (e._groupId === groupId && e.currentInstallment >= currentInstallment) ? {...e, deleted:true} : e));
   } else {
-    saveExp(loadExp().map(e => e.id === id ? {...e, deleted:true} : e));
+    saveExp(loadExpAll().map(e => e.id === id ? {...e, deleted:true} : e));
   }
   S.pendingDeleteInstallment = null;
   S.expandedEntry = null;
@@ -934,9 +965,9 @@ function confirmDeleteRecurring(forward) {
   if (!S.pendingDeleteRecurring) return;
   const { id, notes, date } = S.pendingDeleteRecurring;
   if (forward) {
-    saveExp(loadExp().map(e => (e.isRecurring && e.notes === notes && e.date >= date) ? {...e, deleted:true} : e));
+    saveExp(loadExpAll().map(e => (e.isRecurring && e.notes === notes && e.date >= date) ? {...e, deleted:true} : e));
   } else {
-    saveExp(loadExp().map(e => e.id === id ? {...e, deleted:true} : e));
+    saveExp(loadExpAll().map(e => e.id === id ? {...e, deleted:true} : e));
   }
   S.pendingDeleteRecurring = null;
   S.expandedEntry = null;
@@ -1209,7 +1240,7 @@ function submitGasto(ev) {
       paymentMethod:payMethod, isRecurring:false, recurringEndDate:null, notes, _groupId:groupId, createdAt:Date.now() });
   }
 
-  saveExp([...loadExp(), ...newExps]);
+  saveExp([...loadExpAll(), ...newExps]);
   if (tipo === 'rec') generateRecurring();
   S.homeFormOpen = false; S.cartaoFormOpen = false; S.pixFormOpen = false;
   S.gastoTipo = 'avista'; S.meioSelected = 'credit_card';
