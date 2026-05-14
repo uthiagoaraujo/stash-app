@@ -378,6 +378,22 @@ const S = {
 const API_URL = 'https://script.google.com/macros/s/AKfycbxIWWtCbYiwbXN8CLx1BxwwITgntQbbLJyDnyC0NSk_v6Owbsvh9F1OfpCabvRnfHGdfg/exec';
 const DB = { expenses: [] };
 
+async function apiGet(key) {
+  try {
+    const r = await fetch(API_URL + '?key=' + encodeURIComponent(key));
+    if (!r.ok) return null;
+    const txt = await r.text();
+    if (!txt || txt.trim() === '' || txt.trim() === 'null') return null;
+    return JSON.parse(txt);
+  } catch(e) { return null; }
+}
+async function apiSet(key, value) {
+  try {
+    const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ key, value: JSON.stringify(value) }) });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
 // Read full array (includes deleted — for all save/merge operations)
 const loadExpAll = () => DB.expenses;
 // Read visible array (excludes deleted — for all UI rendering)
@@ -491,6 +507,8 @@ async function syncFromAPI(force) {
   if (fls) fls.style.display = 'none';
 }
 
+
+const CI = {}; // active Chart.js instances keyed by canvas id
 
 // ════════════════════════════════════════════════════
 // DATE & CYCLE UTILITIES
@@ -1723,12 +1741,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
     const re = await Promise.race([_fetch, _timeout]);
     if (Array.isArray(re)) {
-      const local  = DB.expenses;
-      const merged = mergeExpenses(local, re);
-      DB.expenses  = merged;
-      localStorage.setItem('pf_expenses', JSON.stringify(merged));
+      const local    = DB.expenses;
+      const localMap = {};
+      for (const e of local) localMap[e.id] = true;
+      const toAdd    = re.filter(e => !localMap[e.id]);
+      const merged   = [...local, ...toAdd];
       console.log('[init] local=' + local.length + ' remote=' + re.length + ' merged=' + merged.length);
-      if (local.length > re.length) { console.log('[init] local(' + local.length + ') > remote(' + re.length + '), uploading'); apiSet('pf_expenses', merged); }
+      DB.expenses = merged;
+      localStorage.setItem('pf_expenses', JSON.stringify(merged));
+      if (toAdd.length === 0 && local.length > re.length) {
+        apiSet('pf_expenses', local); // local has more — push to Sheets
+      } else if (toAdd.length > 0) {
+        apiSet('pf_expenses', merged); // merged has new entries — push back
+      }
     }
     apiOk = true;
   } catch(e) { /* timeout or network error — DB already has localStorage data */ }
