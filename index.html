@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Stash</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28.35 28.35'><rect width='28.35' height='28.35' fill='%23c6ff33' rx='4'/><circle cx='14.17' cy='14.17' r='7.09' fill='%23fff'/><path fill='%237f3aef' d='M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z'/><path fill='%237f3aef' d='M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z'/><path d='M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z'/><path d='M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z'/></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28.35 28.35'><rect width='28.35' height='28.35' fill='%23c6ff33' rx='4'/><circle cx='14.17' cy='14.17' r='7.09' fill='%23fff'/><path fill='%237f3aef' d='M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z'/><path fill='%237f3aef' d='M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z'/><path d='M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z'/><path d='M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z'/></svg>">
-<link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Stash&quot;,&quot;short_name&quot;:&quot;Stash&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%23000000&quot;,&quot;theme_color&quot;:&quot;%23000000&quot;,&quot;icons&quot;:[]}">
-<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7D39EB">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stash">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1821,7 +1821,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSection('home');
   }
   // else: show auth screen (default state)
-});
+
+  if (!localStorage.getItem('pf_icon_png')) {
+    try {
+      const __c = document.createElement('canvas');
+      __c.width = __c.height = 512;
+      const __img = new Image();
+      const __svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.35 28.35" width="512" height="512"><rect width="28.35" height="28.35" fill="#c6ff33" rx="4"/><circle cx="14.17" cy="14.17" r="7.09" fill="#fff"/><path fill="#7f3aef" d="M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z"/><path fill="#7f3aef" d="M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z"/><path d="M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z"/><path d="M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z"/></svg>';
+      const __blob = new Blob([__svg], {type: 'image/svg+xml'});
+      const __url  = URL.createObjectURL(__blob);
+      __img.onload = () => {
+        __c.getContext('2d').drawImage(__img, 0, 0, 512, 512);
+        URL.revokeObjectURL(__url);
+        try { localStorage.setItem('pf_icon_png', __c.toDataURL('image/png')); } catch(e) {}
+      };
+      __img.src = __url;
+    } catch(e) {}
+  }});
 </script>
 <div id="loading-screen" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;background:#000;color:rgba(255,255,255,0.4);font-family:'DM Sans',sans-serif;font-size:13px;letter-spacing:0.14em">carregando…</div>
 </body>
