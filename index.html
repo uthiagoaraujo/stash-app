@@ -21,9 +21,10 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:
 
 /* ── AUTH ── */
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.auth-box{width:100%;max-width:320px}
-.auth-title{font-size:22px;font-weight:600;margin:0 0 6px}
-.auth-sub{color:var(--muted);font-size:14px;margin:0 0 32px}
+.auth-box{width:100%;max-width:320px;background:linear-gradient(135deg,#7D39EB 0%,#C6FF33 100%);background-size:200% 200%;border-radius:24px;padding:2rem;animation:authGrad 6s ease-in-out infinite alternate}
+@keyframes authGrad{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+.auth-title{font-size:22px;font-weight:600;margin:0 0 8px;color:#fff}
+.auth-sub{color:rgba(255,255,255,0.8);font-size:14px;margin:0 0 28px}
 
 /* ── APP ── */
 #app{max-width:480px;margin:0 auto;padding-bottom:84px;min-height:100vh}
@@ -222,10 +223,10 @@ select option{background:#111;color:#fff}
     <div class="auth-sub">Digite a senha para continuar.</div>
     <form onsubmit="doAuth(event)">
       <div class="form-group">
-        <input type="tel" inputmode="numeric" id="auth-pass" placeholder="Senha" autocomplete="current-password" autofocus>
+        <input type="password" inputmode="numeric" id="auth-pass" placeholder="••••" autocomplete="current-password">
       </div>
       <div id="auth-error" class="error-msg" style="display:none">Senha incorreta.</div>
-      <button type="submit" class="btn btn-primary" style="margin-top:12px">Entrar</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:12px;background:#000;color:#fff">Entrar</button>
     </form>
   </div>
 </div>
@@ -881,6 +882,8 @@ function navMonth(section, dir) {
   renderSection(S.section);
 }
 function toggleSegCard(el) {
+  const sc = document.querySelector('.cards-scroll');
+  if (sc) S.cardsScrollLeft = sc.scrollLeft;
   const seg = el.dataset ? el.dataset.s : el;
   S.expandedSegCard = (S.expandedSegCard === seg) ? null : seg;
   if (S.section === 'gastos') S.gastosSegFilter = S.expandedSegCard || null;
@@ -1201,8 +1204,10 @@ function renderGastos() {
     buildSortBar('gastosSort') +
     '<div class="entry-list">' + list + '</div>' +
     '';
-
-
+  requestAnimationFrame(() => {
+    const sc = document.querySelector('.cards-scroll');
+    if (sc && S.cardsScrollLeft) sc.scrollLeft = S.cardsScrollLeft;
+  });
 }
 
 function exportGastosSection() {
@@ -1714,6 +1719,7 @@ function doAuth(ev) {
 // INIT
 // ════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { const p = document.getElementById('auth-pass'); if (p) p.focus(); }, 100);
   if (typeof Chart !== 'undefined') {
     Chart.defaults.font.family = "'DM Sans', sans-serif";
     Chart.defaults.font.size   = 11;
