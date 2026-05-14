@@ -831,7 +831,7 @@ function applyGroupEdit(applyAll) {
 function deleteExpEntry(id) {
   const e = loadExp().find(x => x.id === id);
   if (e && e.isRecurring) {
-    S.pendingDeleteRecurring = { id, notes: e.notes };
+    S.pendingDeleteRecurring = { id, notes: e.notes, date: e.date };
     S.expandedEntry = { type: 'exp', id };
     renderSection(S.section);
   } else {
@@ -841,11 +841,11 @@ function deleteExpEntry(id) {
   }
 }
 
-function confirmDeleteRecurring(all) {
+function confirmDeleteRecurring(forward) {
   if (!S.pendingDeleteRecurring) return;
-  const { id, notes } = S.pendingDeleteRecurring;
-  if (all) {
-    saveExp(loadExp().filter(e => !(e.isRecurring && e.notes === notes)));
+  const { id, notes, date } = S.pendingDeleteRecurring;
+  if (forward) {
+    saveExp(loadExp().filter(e => !(e.isRecurring && e.notes === notes && e.date >= date)));
   } else {
     saveExp(loadExp().filter(e => e.id !== id));
   }
@@ -907,10 +907,10 @@ function expenseEntryHtml(e) {
     const dn = esc(S.pendingDeleteRecurring.notes || 'este lançamento');
     return '<div class="entry-item entry-open">' + header +
       '<div class="entry-edit" style="text-align:center">' +
-      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Apagar só este ou todos os lançamentos recorrentes de <strong>' + dn + '</strong>?</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Apagar só este mês ou este e todos os seguintes?</div>' +
       '<div class="edit-actions" style="justify-content:center;gap:10px">' +
       '<button class="btn btn-outline" style="flex:1" onclick="confirmDeleteRecurring(false)">Só este</button>' +
-      '<button class="btn-del" style="flex:1" onclick="confirmDeleteRecurring(true)">Todos</button>' +
+      '<button class="btn-del" style="flex:1" onclick="confirmDeleteRecurring(true)">Este e seguintes</button>' +
       '</div></div></div>';
   }
 
@@ -1095,7 +1095,7 @@ function gastosFormHtml() {
         <select id="g-seg" required><option value="">Selecione…</option>${segOpts}</select>
       </div>
       <div class="form-group">
-        <label class="form-label">Valor (R$)</label>
+        <label class="form-label" id="g-valor-label">${tipo==='parc' ? 'Valor da parcela (R$)' : 'Valor (R$)'}</label>
         <input type="number" id="g-valor" step="0.01" min="0.01" placeholder="0,00" required>
       </div>
       <div class="form-group">
@@ -1143,6 +1143,8 @@ function selectTipo(tipo) {
   const rw = document.getElementById('g-rec-wrap');
   if (pw) pw.style.display = tipo === 'parc' ? 'block' : 'none';
   if (rw) rw.style.display = tipo === 'rec'  ? 'block' : 'none';
+  const vl = document.getElementById('g-valor-label');
+  if (vl) vl.textContent = tipo === 'parc' ? 'Valor da parcela (R\$)' : 'Valor (R\$)';
 }
 
 function submitGasto(ev) {
@@ -1160,9 +1162,8 @@ function submitGasto(ev) {
   if (tipo === 'parc') {
     const pRaw    = parseInt((document.getElementById('g-parcelas') || {}).value, 10);
     const parcelas = (!pRaw || pRaw < 2) ? 2 : Math.min(pRaw, 99);
-    const per     = valor / parcelas;
     for (let k = 1; k <= parcelas; k++) {
-      newExps.push({ id:uid(), date:addMonths(date,k-1), segment, amount:per,
+      newExps.push({ id:uid(), date:addMonths(date,k-1), segment, amount:valor,
         installments:parcelas, currentInstallment:k, paymentMethod:S.meioSelected,
         isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
     }
