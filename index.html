@@ -37,11 +37,11 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:
 #toast.local{background:rgba(255,210,0,0.12);color:#FFD700}
 @keyframes toastPulse{0%,100%{opacity:.6}50%{opacity:1}}
 /* ── SYNC DOT ── */
-.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background 400ms}
+.sync-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;transition:background 400ms}
 .sync-dot.green{background:#C6FF33}
-.sync-dot.yellow{background:#FFD700}
+.sync-dot.red{background:#FF3B30}
 /* ── SYNC BTN ── */
-.sync-btn{background:none;border:none;color:rgba(255,255,255,0.35);font-size:18px;cursor:pointer;padding:4px 6px;border-radius:4px;line-height:1;transition:color 150ms;flex-shrink:0}
+.sync-btn{background:none;border:none;color:rgba(255,255,255,0.35);font-size:1.4rem;cursor:pointer;padding:8px 10px;border-radius:6px;line-height:1;transition:color 150ms;flex-shrink:0;min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
 .sync-btn:hover{color:rgba(255,255,255,.7)}
 .sync-btn.spinning{animation:syncSpin 1s linear infinite}
 @keyframes syncSpin{to{transform:rotate(360deg)}}
@@ -201,8 +201,8 @@ select option{background:#111;color:#fff}
 .seg-card.seg-active{border-color:var(--accent)}
 .seg-expanded{border:1px solid rgba(125,57,235,0.3);border-radius:8px;padding:14px;margin-bottom:16px;animation:fadeSlide 150ms ease}
 .seg-expanded-title{font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
-.cycle-progress-track{width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-top:8px}
-.cycle-progress-fill{height:100%;background:var(--lime);border-radius:3px}
+.cycle-progress-track{width:100%;height:6px;background:rgba(255,255,255,0.15);border-radius:3px;overflow:hidden;margin-top:8px}
+.cycle-progress-fill{height:100%;background:#C6FF33;border-radius:3px;transition:width 500ms ease}
 .week-sep{padding:14px 0 6px}
 .week-sep-label{display:block;font-size:0.7rem;font-weight:300;color:#C6FF33;font-family:var(--font);margin-bottom:6px;letter-spacing:0.02em}
 .week-sep-line{width:100%;height:1px;background:#C6FF33;opacity:0.6}
@@ -229,7 +229,15 @@ select option{background:#111;color:#fff}
 .proj-tag{display:inline-block;font-size:10px;color:#C6FF33;border:1px solid rgba(198,255,51,0.4);border-radius:4px;padding:1px 6px;margin-left:8px;vertical-align:middle;letter-spacing:0.04em}
 /* ── CC SUMMARY ENTRY ── */
 .entry-cc-summary .entry-header{cursor:default;opacity:.85}
-.entry-cc-summary .entry-header::after{content:'auto';font-size:9px;color:var(--muted);margin-left:auto;padding-left:8px}/* ── CHARTS ── */
+.entry-cc-summary .entry-header::after{content:'auto';font-size:9px;color:var(--muted);margin-left:auto;padding-left:8px}/* ── INSIGHT INFOGRAPHICS ── */
+.insight-bar-wrap{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin:10px 0 6px}
+.insight-bar-fill{height:100%;background:#7D39EB;border-radius:3px;transition:width 400ms ease}
+.commit-bars{display:flex;gap:4px;align-items:flex-end;margin-top:12px}
+.commit-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.commit-bar{width:100%;background:#7D39EB;border-radius:3px 3px 0 0;min-height:2px}
+.commit-bar-lbl{font-size:9px;color:var(--muted);text-align:center;letter-spacing:0.02em}
+.sparkline-wrap{margin-top:8px;overflow:visible}
+/* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
 .chart-wrap canvas{max-height:220px}
 .chart-title{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
@@ -289,7 +297,7 @@ select option{background:#111;color:#fff}
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.35 28.35" width="48" height="48"><rect width="28.35" height="28.35" fill="#c6ff33" rx="4"/><circle cx="14.17" cy="14.17" r="7.09" fill="#fff"/><path fill="#7f3aef" d="M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z"/><path fill="#7f3aef" d="M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z"/><path d="M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z"/><path d="M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z"/></svg>
     <div style="flex:1"><div class="app-header-name">Stash</div><div class="app-header-sub">by: uthiago</div></div>
     <div style="display:flex;align-items:center;gap:6px">
-      <span id="sync-dot" class="sync-dot yellow"></span>
+      <span id="sync-dot" class="sync-dot red"></span>
       <button id="sync-btn" class="sync-btn" onclick="manualSync()" title="Sincronizar">&#8635;</button>
       <span id="sync-label" class="sync-label"></span>
     </div>
@@ -356,7 +364,7 @@ async function manualSync() {
     setSyncDot('green');
   } catch(e) {
     if (lbl) { lbl.textContent = 'Sem conexão'; setTimeout(() => { if (lbl) lbl.textContent = ''; }, 2000); }
-    setSyncDot('yellow');
+    setSyncDot('red');
   }
   if (btn) btn.classList.remove('spinning');
 }
@@ -423,7 +431,7 @@ async function syncFromAPI(force) {
     }
     if (changed && sessionStorage.getItem('auth') === 'ok') renderSection(S.section);
     setSyncDot('green');
-  } catch(e) { setSyncDot('yellow'); }
+  } catch(e) { setSyncDot('red'); }
   if (bar) { bar.style.opacity = '0'; bar.style.transition = 'opacity 400ms'; setTimeout(() => { bar.style.display = 'none'; bar.style.opacity = '1'; bar.style.transition = ''; }, 420); }
   const fls = document.getElementById('first-load-spinner');
   if (fls) fls.style.display = 'none';
@@ -441,7 +449,7 @@ function saveExp(arr) {
   localStorage.setItem('pf_expenses', JSON.stringify(arr));
   _lastLocalSave = Date.now();
   showToast('Salvando...', 'saving', 0);
-  setSyncDot('yellow');
+  setSyncDot('red');
   apiSet('pf_expenses', arr).then(ok => {
     if (ok) { showToast('✓ Sincronizado', 'success', 2000); setSyncDot('green'); }
     else     { showToast('⚠ Salvo localmente', 'local', 4000); }
@@ -1002,7 +1010,8 @@ function expenseEntryHtml(e) {
   const mCC = e.paymentMethod === 'credit_card';
 
   const form = `
-    <div class="entry-edit">
+    <div class="entry-edit" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:12px">
+      <div class="form-card" style="margin-bottom:0">
       <div class="edit-row">
         <label class="form-label">Data</label>
         <input type="date" id="ee-date-${e.id}" value="${e.date}">
@@ -1033,6 +1042,7 @@ function expenseEntryHtml(e) {
       <div class="edit-actions">
         <button class="btn btn-primary" style="flex:1;margin-top:0" onclick="saveExpEntry('${e.id}')">Salvar</button>
         <button class="btn-del" onclick="deleteExpEntry('${e.id}')">Apagar</button>
+      </div>
       </div>
     </div>`;
 
@@ -1420,6 +1430,13 @@ function renderInsights() {
   const daysElapsed = Math.max(1, Math.round((todayD - csDate)/(864e5)) + 1);
   const avgDaily = cycleTotal / daysElapsed;
 
+  /* Sparkline: last 7 days expense totals */
+  const spark7 = Array.from({length:7}, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (6 - i));
+    const dISO = isoDate(d);
+    return cycleExp.filter(e => e.date === dISO).reduce((s,e) => s+e.amount, 0);
+  });
+
   const relacao = null; // income removed
 
   /* 5. Comprometimento futuro (next 6 cycles) */
@@ -1495,13 +1512,15 @@ function renderInsights() {
   }
 
   /* ── HTML ── */
+  const barH = 44;
   const commitBarHtml = maxCommit > 0
-    ? `<div class="mini-bar-list">${commitments.map(c => `
-        <div class="mini-bar-row">
-          <div class="mini-bar-label">${c.label}</div>
-          <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.max(2,Math.round(c.total/maxCommit*100))}%"></div></div>
-          <div class="mini-bar-val">${c.total > 0 ? brl(c.total) : '<span class="c-zero">—</span>'}</div>
-        </div>`).join('')}</div>`
+    ? `<div class="commit-bars" style="height:${barH+18}px">${commitments.map(c => {
+        const h = Math.max(2, Math.round(c.total/maxCommit*barH));
+        return `<div class="commit-bar-col">
+          <div class="commit-bar" style="height:${h}px" title="${brl(c.total)}"></div>
+          <div class="commit-bar-lbl">${c.label}</div>
+        </div>`;
+      }).join('')}</div>`
     : '<p style="color:var(--muted);font-size:13px;margin:8px 0 0">Sem parcelas futuras registradas.</p>';
 
   const segAvgHtml = segAvgs.length > 0
