@@ -384,15 +384,13 @@ const S = {
 // MERGE HELPER — never lose local data on sync
 // ════════════════════════════════════════════════════
 function mergeExpenses(local, remote) {
-  if (!Array.isArray(remote) || remote.length === 0) return local;
-  if (!Array.isArray(local)  || local.length  === 0) return remote;
-  if (remote.length > local.length) return remote; // Sheets has more — another device added something
-  if (local.length  > remote.length) return local; // Local has more — local wins; caller uploads to Sheets
-  // Same count but may differ — merge by id, conflict → most recent date wins
+  // Purely additive union — never discard entries from either source
   const byId = {};
-  for (const e of remote) byId[e.id] = e;
-  for (const e of local)  byId[e.id] = (!byId[e.id] || e.date >= byId[e.id].date) ? e : byId[e.id];
-  return Object.values(byId);
+  for (const e of (remote || [])) byId[e.id] = e;
+  for (const e of (local  || [])) byId[e.id] = e; // local always wins conflicts (most recently written)
+  const merged = Object.values(byId);
+  console.log('[merge] local=' + (local||[]).length + ' remote=' + (remote||[]).length + ' merged=' + merged.length);
+  return merged;
 }
 // ════════════════════════════════════════════════════
 // API LAYER — Google Sheets backend, localStorage cache
@@ -431,9 +429,9 @@ async function syncFromAPI(force) {
       const local   = [...DB.expenses];
       const merged  = mergeExpenses(local, re);
       const mStr    = JSON.stringify(merged);
-      console.log('[syncFromAPI] local=' + local.length + ' remote=' + re.length + ' merged=' + merged.length);
       if (mStr !== JSON.stringify(local)) { DB.expenses = merged; localStorage.setItem('pf_expenses', mStr); changed = true; }
-      if (local.length > re.length) { console.log('[syncFromAPI] local(' + local.length + ') > remote(' + re.length + '), uploading'); apiSet('pf_expenses', merged); }
+      // Always upload merged result back to Sheets to keep both in sync
+      if (mStr !== JSON.stringify(re)) { apiSet('pf_expenses', merged); }
     }
     if (changed) renderSection(S.section);
     setSyncDot('green');
@@ -555,7 +553,7 @@ function generateRecurring() {
   // Group recurring expenses by notes key; find earliest entry as template
   const groups = {};
   for (const e of expenses) {
-    if (!e.isRecurring) continue;
+    if (!e.isRecurring || e.deleted) continue;
     const key = e.notes || e.id;
     if (!groups[key]) groups[key] = { template: e, covered: new Set() };
     groups[key].covered.add(e.date.slice(0, 7));
@@ -650,7 +648,7 @@ function setFilter(stateKey, val) {
 // ════════════════════════════════════════════════════
 function updateCreditCardSummaries() {
   const expenses = loadExp();
-  const real     = expenses.filter(e => !e.isCreditCardSummary);
+  const real     = expenses.filter(e => !e.isCreditCardSummary && !e.deleted);
 
   // Collect all unique billing-cycle start dates present in expense data (past + future)
   const cycleStarts = new Set();
@@ -915,7 +913,7 @@ function deleteExpEntry(id) {
     S.expandedEntry = { type: 'exp', id };
     renderSection(S.section);
   } else {
-    saveExp(loadExp().filter(x => x.id !== id));
+    saveExp(loadExp().map(x => x.id === id ? {...x, deleted: true} : x));
     S.expandedEntry = null;
     renderSection(S.section);
   }
@@ -925,9 +923,9 @@ function confirmDeleteInstallment(forward) {
   if (!S.pendingDeleteInstallment) return;
   const { id, groupId, currentInstallment } = S.pendingDeleteInstallment;
   if (forward) {
-    saveExp(loadExp().filter(e => !(e._groupId === groupId && e.currentInstallment >= currentInstallment)));
+    saveExp(loadExp().map(e => (e._groupId === groupId && e.currentInstallment >= currentInstallment) ? {...e, deleted:true} : e));
   } else {
-    saveExp(loadExp().filter(e => e.id !== id));
+    saveExp(loadExp().map(e => e.id === id ? {...e, deleted:true} : e));
   }
   S.pendingDeleteInstallment = null;
   S.expandedEntry = null;
@@ -938,9 +936,9 @@ function confirmDeleteRecurring(forward) {
   if (!S.pendingDeleteRecurring) return;
   const { id, notes, date } = S.pendingDeleteRecurring;
   if (forward) {
-    saveExp(loadExp().filter(e => !(e.isRecurring && e.notes === notes && e.date >= date)));
+    saveExp(loadExp().map(e => (e.isRecurring && e.notes === notes && e.date >= date) ? {...e, deleted:true} : e));
   } else {
-    saveExp(loadExp().filter(e => e.id !== id));
+    saveExp(loadExp().map(e => e.id === id ? {...e, deleted:true} : e));
   }
   S.pendingDeleteRecurring = null;
   S.expandedEntry = null;
@@ -1225,7 +1223,7 @@ function submitGasto(ev) {
 function homeSummaryHtml() {
   const cs      = isoDate(cycleStart());
   const today   = todayISO();
-  const allCycleExp = loadExp().filter(e => e.date >= cs && e.date <= today);
+  const allCycleExp = loadExp().filter(e => !e.deleted && e.date >= cs && e.date <= today);
 
   const totals = {};
   SEGMENTS.forEach(s => totals[s] = 0);
@@ -1273,7 +1271,7 @@ function homeSummaryHtml() {
 function exportHomeCycle() {
   const cs    = isoDate(cycleStart());
   const today = todayISO();
-  doExportGastos(loadExp().filter(e => e.date >= cs && e.date <= today), 'ciclo-atual');
+  doExportGastos(loadExp().filter(e => !e.deleted && e.date >= cs && e.date <= today), 'ciclo-atual');
 }
 
 // ════════════════════════════════════════════════════
@@ -1288,7 +1286,7 @@ function renderCartao() {
   const el   = document.getElementById('section-cartao');
   const navR = getNavCycleRange(S.cartaoNavOffset);
   const { start, end } = navR;
-  const allExp = loadExp().filter(e => !e.isCreditCardSummary && e.paymentMethod === 'credit_card' && e.date >= start && e.date <= end);
+  const allExp = loadExp().filter(e => !e.deleted && !e.isCreditCardSummary && e.paymentMethod === 'credit_card' && e.date >= start && e.date <= end);
   const total  = allExp.reduce((s,e) => s+e.amount, 0);
 
   const segTotals = {};
@@ -1357,7 +1355,7 @@ function renderPix() {
   const navR = getNavCycleRange(S.pixNavOffset);
   const { start, end } = navR;
   // Include CC summary entries in pix page
-  const allExp = loadExp().filter(e => e.paymentMethod === 'pix' && e.date >= start && e.date <= end);
+  const allExp = loadExp().filter(e => !e.deleted && e.paymentMethod === 'pix' && e.date >= start && e.date <= end);
   const total  = allExp.reduce((s,e) => s+e.amount, 0);
   const realExp = allExp.filter(e => !e.isCreditCardSummary);
 
@@ -1412,7 +1410,7 @@ function renderInsights() {
   const el     = document.getElementById('section-insights');
   const cs     = isoDate(cycleStart());
   const today  = todayISO();
-  const allExp = loadExp();
+  const allExp = loadExp().filter(e => !e.deleted);
 
   /* cycle data */
   const cycleExp      = allExp.filter(e => e.date >= cs && e.date <= today);
