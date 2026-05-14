@@ -31,12 +31,25 @@ html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:
 .section.visible{opacity:1}
 
 /* ── BOTTOM NAV ── */
-#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#000;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;padding:6px 0 10px;z-index:100;overflow:hidden}
-#bottom-nav::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(125,57,235,0.3),rgba(198,255,51,0.3));opacity:0;animation:navPulse 4s ease-in-out infinite alternate;pointer-events:none;z-index:0}
-@keyframes navPulse{0%{opacity:0}100%{opacity:1}}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 6px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:0.02em;transition:color 150ms;user-select:none;border:none;background:none;flex:1;min-width:0;position:relative;z-index:1}
-.nav-item.active{color:var(--lime)}
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#7D39EB;border-top:none;display:flex;justify-content:space-around;align-items:center;padding:6px 0 10px;z-index:100;animation:navBg 4s ease-in-out infinite alternate}
+
+@keyframes navBg{0%{background:#7D39EB}100%{background:#C6FF33}}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 6px;color:rgba(255,255,255,0.65);font-size:10px;font-weight:500;letter-spacing:0.02em;user-select:none;border:none;background:none;flex:1;min-width:0;position:relative;z-index:1;animation:navItemCol 4s ease-in-out infinite alternate}
+@keyframes navItemCol{0%{color:rgba(255,255,255,0.65)}100%{color:rgba(0,0,0,0.45)}}
+.nav-item.active{animation:navActiveCol 4s ease-in-out infinite alternate}
+@keyframes navActiveCol{0%{color:#C6FF33}100%{color:#000}}
 .nav-item svg{width:20px;height:20px;flex-shrink:0}
+
+/* -- HOME BUTTONS -- */
+.home-action-btns{display:flex;flex-direction:column;gap:16px;padding:8px 0}
+.home-btn{width:100%;padding:28px 20px;border:none;border-radius:10px;font-family:var(--font);font-size:1.4rem;font-weight:600;cursor:pointer;letter-spacing:0.01em;transition:opacity 150ms}
+.home-btn:active{opacity:.82}
+.home-btn-gasto{background:#7D39EB;color:#fff}
+.home-btn-fat{background:#C6FF33;color:#000}
+/* -- TOTAL CARD -- */
+.total-card{border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:20px}
+.total-card-label{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px}
+.total-card-value{font-size:28px;font-weight:600;line-height:1.2}
 
 /* ── INPUTS ── */
 input,select,textarea{width:100%;background:#000;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;padding:11px 12px;font-family:var(--font);font-size:14px;outline:none;transition:border-color 150ms,box-shadow 150ms;appearance:none;-webkit-appearance:none}
@@ -287,6 +300,8 @@ const S = {
   fatPeriod:    'month', fatFrom:    '', fatTo:    '',
   balancoPeriod:'month', balancoFrom:'', balancoTo: '',
   expandedEntry: null,   // { type: 'exp'|'inc', id: string }
+  gastoTipo: 'avista',   // 'avista' | 'parc' | 'rec'
+  pendingGroupEdit: null,
   homeSort: 'date-desc', homeSeg: null, expandedSegCard: null,
   gastosSort: 'date-desc', gastosSegFilter: null, gastosNavOffset: 0,
   fatSort:    'date-desc', fatAccFilter: null,    fatNavOffset: 0,
@@ -659,7 +674,26 @@ function saveExpEntry(id) {
   if (!date || !seg || isNaN(val) || val <= 0) return;
   expenses[idx] = { ...orig, date, segment: seg, amount: val, notes, paymentMethod: mCC ? 'credit_card' : 'pix' };
   saveExp(expenses);
-  S.expandedEntry = null;
+  if ((orig.installments > 1 || orig.isRecurring) && (seg !== orig.segment || notes !== orig.notes)) {
+    S.pendingGroupEdit = { id, groupId: orig._groupId, newSeg: seg, newNotes: notes, isRec: orig.isRecurring };
+    S.expandedEntry = { type: 'exp', id };
+  } else {
+    S.expandedEntry = null;
+  }
+  renderSection(S.section);
+}
+
+function applyGroupEdit(applyAll) {
+  if (!S.pendingGroupEdit) return;
+  if (applyAll) {
+    const { groupId, newSeg, newNotes } = S.pendingGroupEdit;
+    const updated = loadExp().map(e =>
+      e._groupId === groupId ? { ...e, segment: newSeg, notes: newNotes } : e
+    );
+    saveExp(updated);
+  }
+  S.pendingGroupEdit = null;
+  S.expandedEntry    = null;
   renderSection(S.section);
 }
 
@@ -716,6 +750,18 @@ function expenseEntryHtml(e) {
     </div>`;
 
   if (!isOpen) return `<div class="entry-item">${header}</div>`;
+  // Group-edit prompt
+  if (S.pendingGroupEdit && S.pendingGroupEdit.id === e.id) {
+    const desc = S.pendingGroupEdit.isRec ? 'recorrências' : 'parcelas';
+    return '<div class="entry-item entry-open">' + header +
+      '<div class="entry-edit" style="text-align:center">' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aplicar alterações de nome e segmento a todas as ' + desc + ' deste lançamento?</div>' +
+      '<div class="edit-actions" style="justify-content:center;gap:10px">' +
+      '<button class="btn btn-outline" style="flex:1" onclick="applyGroupEdit(false)">Só este</button>' +
+      '<button class="btn btn-primary" style="flex:1;margin-top:0" onclick="applyGroupEdit(true)">Todos</button>' +
+      '</div></div></div>';
+  }
+
 
   const segOpts = SEGMENTS.map(s =>
     `<option value="${esc(s)}"${e.segment === s ? ' selected' : ''}>${esc(s)}</option>`
@@ -841,18 +887,15 @@ function toggleSegCard(el) {
 function renderHome() {
   const el  = document.getElementById('section-home');
   const tab = S.homeTab;
-  const tabs = `
-    <div class="home-tabs">
-      <button class="tab-btn${tab==='gastos'?' active':''}"        onclick="toggleHomeTab('gastos')">+ gasto</button>
-      <button class="tab-btn${tab==='faturamentos'?' active':''}"  onclick="toggleHomeTab('faturamentos')">+ faturamento</button>
-    </div>`;
-
-  let body;
-  if      (tab === 'gastos')        body = gastosFormHtml();
-  else if (tab === 'faturamentos')  body = faturamentosFormHtml();
-  else                               body = homeSummaryHtml();
-
-  el.innerHTML = `<h1 class="section-title">Início</h1>${tabs}<div class="form-wrap">${body}</div>`;
+  let formHtml = '';
+  if      (tab === 'gastos')       formHtml = '<div class="form-wrap">' + gastosFormHtml() + '</div>';
+  else if (tab === 'faturamentos') formHtml = '<div class="form-wrap">' + faturamentosFormHtml() + '</div>';
+  el.innerHTML = `
+    <div class="home-action-btns">
+      <button class="home-btn home-btn-gasto" onclick="toggleHomeTab('gastos')">Gasto</button>
+      <button class="home-btn home-btn-fat"   onclick="toggleHomeTab('faturamentos')">Faturamento</button>
+    </div>
+    ${formHtml}`;
 }
 
 function toggleHomeTab(tab) {
@@ -865,8 +908,13 @@ function toggleHomeTab(tab) {
 function gastosFormHtml() {
   const segOpts = SEGMENTS.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
   const mCC = S.meioSelected === 'credit_card';
+  const tipo = S.gastoTipo || 'avista';
   return `
-    <form onsubmit="submitGasto(event)"><div class="form-group"><label class="form-label">Notas</label><input type="text" id="g-notes" placeholder="Descrição ou referência" maxlength="120"></div>
+    <form onsubmit="submitGasto(event)">
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <input type="text" id="g-notes" placeholder="Descrição ou referência" maxlength="120">
+      </div>
       <div class="form-group">
         <label class="form-label">Data</label>
         <input type="date" id="g-date" value="${todayISO()}" required>
@@ -880,10 +928,6 @@ function gastosFormHtml() {
         <input type="number" id="g-valor" step="0.01" min="0.01" placeholder="0,00" required>
       </div>
       <div class="form-group">
-        <label class="form-label">Parcelas</label>
-        <input type="number" id="g-parcelas" min="1" max="99" placeholder="À vista (1)">
-      </div>
-      <div class="form-group">
         <label class="form-label">Meio de pagamento</label>
         <div class="toggle-group">
           <button type="button" id="btn-cc"  class="toggle-btn${mCC?' selected':''}"  onclick="selectMeio('credit_card')">Cartão</button>
@@ -891,14 +935,20 @@ function gastosFormHtml() {
         </div>
       </div>
       <div class="form-group">
-        <div class="checkbox-row">
-          <input type="checkbox" id="g-recorrente" onchange="toggleRecorrente(this)">
-          <label for="g-recorrente">Recorrente</label>
+        <label class="form-label">Tipo</label>
+        <div class="toggle-group">
+          <button type="button" id="g-tipo-avista" class="toggle-btn${tipo==='avista'?' selected':''}" onclick="selectTipo('avista')">À vista</button>
+          <button type="button" id="g-tipo-parc"   class="toggle-btn${tipo==='parc'?' selected':''}"   onclick="selectTipo('parc')">Parcelado</button>
+          <button type="button" id="g-tipo-rec"    class="toggle-btn${tipo==='rec'?' selected':''}"    onclick="selectTipo('rec')">Recorrente</button>
         </div>
-        <div id="g-termina-wrap" style="display:none;margin-top:10px">
-          <label class="form-label">Termina em (opcional)</label>
-          <input type="date" id="g-termina">
-        </div>
+      </div>
+      <div id="g-parc-wrap" style="display:${tipo==='parc'?'block':'none'};margin-top:10px">
+        <label class="form-label">Número de parcelas</label>
+        <input type="number" id="g-parcelas" min="2" max="99" placeholder="Ex: 12">
+      </div>
+      <div id="g-rec-wrap" style="display:${tipo==='rec'?'block':'none'};margin-top:10px">
+        <label class="form-label">Termina em (opcional)</label>
+        <input type="date" id="g-termina">
       </div>
       <button type="submit" class="btn btn-primary">Adicionar gasto</button>
     </form>`;
@@ -912,50 +962,53 @@ function selectMeio(val) {
   if (pix) pix.classList.toggle('selected', val === 'pix');
 }
 
-function toggleRecorrente(cb) {
-  const w = document.getElementById('g-termina-wrap');
-  if (w) w.style.display = cb.checked ? 'block' : 'none';
+function selectTipo(tipo) {
+  S.gastoTipo = tipo;
+  ['avista','parc','rec'].forEach(t => {
+    const b = document.getElementById('g-tipo-' + t);
+    if (b) b.classList.toggle('selected', t === tipo);
+  });
+  const pw = document.getElementById('g-parc-wrap');
+  const rw = document.getElementById('g-rec-wrap');
+  if (pw) pw.style.display = tipo === 'parc' ? 'block' : 'none';
+  if (rw) rw.style.display = tipo === 'rec'  ? 'block' : 'none';
 }
 
 function submitGasto(ev) {
   ev.preventDefault();
-  const date      = document.getElementById('g-date').value;
-  const segment   = document.getElementById('g-seg').value;
-  const valor     = parseFloat(document.getElementById('g-valor').value);
-  const pRaw      = parseInt(document.getElementById('g-parcelas').value, 10);
-  const parcelas  = (!pRaw || pRaw < 1) ? 1 : Math.min(pRaw, 99);
-  const isRec     = document.getElementById('g-recorrente').checked;
-  const terminaEl = document.getElementById('g-termina');
-  const recurEnd  = (isRec && terminaEl && terminaEl.value) ? terminaEl.value : null;
-
+  const date    = document.getElementById('g-date').value;
+  const segment = document.getElementById('g-seg').value;
+  const valor   = parseFloat(document.getElementById('g-valor').value);
+  const notes   = document.getElementById('g-notes') ? document.getElementById('g-notes').value.trim() : '';
+  const tipo    = S.gastoTipo || 'avista';
   if (!date || !segment || isNaN(valor) || valor <= 0) return;
 
-  const groupId   = uid();
-  const perAmount = valor / parcelas;
-  const newExps   = [];
+  const groupId = uid();
+  const newExps = [];
 
-  for (let k = 1; k <= parcelas; k++) {
-    newExps.push({
-      id: uid(),
-      date: addMonths(date, k - 1),
-      segment,
-      amount: perAmount,
-      installments: parcelas,
-      currentInstallment: k,
-      paymentMethod: S.meioSelected,
-      isRecurring: isRec,
-      recurringEndDate: recurEnd,
-      notes: document.getElementById('g-notes') ? document.getElementById('g-notes').value.trim() : '',
-      _groupId: groupId
-    });
+  if (tipo === 'parc') {
+    const pRaw    = parseInt((document.getElementById('g-parcelas') || {}).value, 10);
+    const parcelas = (!pRaw || pRaw < 2) ? 2 : Math.min(pRaw, 99);
+    const per     = valor / parcelas;
+    for (let k = 1; k <= parcelas; k++) {
+      newExps.push({ id:uid(), date:addMonths(date,k-1), segment, amount:per,
+        installments:parcelas, currentInstallment:k, paymentMethod:S.meioSelected,
+        isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
+    }
+  } else if (tipo === 'rec') {
+    const te = document.getElementById('g-termina');
+    newExps.push({ id:uid(), date, segment, amount:valor, installments:1, currentInstallment:1,
+      paymentMethod:S.meioSelected, isRecurring:true, recurringEndDate:(te&&te.value?te.value:null),
+      notes, _groupId:groupId });
+  } else {
+    newExps.push({ id:uid(), date, segment, amount:valor, installments:1, currentInstallment:1,
+      paymentMethod:S.meioSelected, isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
   }
 
   saveExp([...loadExp(), ...newExps]);
-  S.homeTab      = null;
-  S.meioSelected = 'credit_card';
+  S.homeTab = null; S.gastoTipo = 'avista'; S.meioSelected = 'credit_card';
   renderHome();
 }
-
 /* ─── FATURAMENTOS FORM ─── */
 function faturamentosFormHtml() {
   const accOpts = ACCOUNTS.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
@@ -1059,72 +1112,72 @@ function exportHomeCycle() {
 // SECTION 2 — GASTOS (analysis)
 // ════════════════════════════════════════════════════
 function renderGastos() {
-  const el = document.getElementById('section-gastos');
+  const el   = document.getElementById('section-gastos');
   const navR = getNavCycleRange(S.gastosNavOffset);
   const { start, end } = navR;
   const allPeriodExp = loadExp().filter(e => e.date >= start && e.date <= end);
 
-  // Totals for filter tags (unfiltered)
-  const segTotals = {};
+  // Totals
+  const totalGasto = allPeriodExp.reduce((s,e) => s+e.amount, 0);
+  const segTotals  = {};
   SEGMENTS.forEach(s => segTotals[s] = 0);
-  allPeriodExp.forEach(e => { if (segTotals[e.segment] !== undefined) segTotals[e.segment] += e.amount; });
-  const usedSegs = SEGMENTS.filter(s => segTotals[s] > 0);
+  allPeriodExp.forEach(e => { if (segTotals[e.segment]!==undefined) segTotals[e.segment]+=e.amount; });
+  const sortedSegs = [...SEGMENTS].sort((a,b) => segTotals[b]-segTotals[a]);
+  const usedSegs   = sortedSegs.filter(s => segTotals[s] > 0);
   const filterItems = [{label:'Todos',value:null}, ...usedSegs.map(s => ({label:s,value:s}))];
 
   // Apply segment filter
   const segF     = S.gastosSegFilter;
-  const expenses = segF ? allPeriodExp.filter(e => e.segment === segF) : allPeriodExp;
+  const expenses = segF ? allPeriodExp.filter(e => e.segment===segF) : allPeriodExp;
 
-  // Historical bar (filtered)
-  const allExp   = loadExp();
-  const cycles   = lastNCycles(6);
-  const cycleAmt = cycles.map(c => allExp
-    .filter(e => e.date >= c.start && e.date <= c.end && (!segF || e.segment === segF))
-    .reduce((s,e) => s+e.amount, 0));
-
-  // Doughnut data (filtered)
+  // Doughnut (filtered)
   const filtSegTotals = {};
   SEGMENTS.forEach(s => filtSegTotals[s] = 0);
-  expenses.forEach(e => { if (filtSegTotals[e.segment] !== undefined) filtSegTotals[e.segment] += e.amount; });
+  expenses.forEach(e => { if(filtSegTotals[e.segment]!==undefined) filtSegTotals[e.segment]+=e.amount; });
   const filtUsedSegs = SEGMENTS.filter(s => filtSegTotals[s] > 0);
 
+  // Seg cards (expandable)
+  const segCards = sortedSegs.map(s =>
+    '<div class="' + (S.expandedSegCard===s?'seg-card seg-active':'seg-card') + '" onclick="toggleSegCard(this)" data-s="' + esc(s) + '">' +
+    '<div class="seg-card-name">' + esc(s) + '</div>' +
+    '<div class="seg-card-amount">' + brl(segTotals[s]) + '</div></div>'
+  ).join('');
+  let expandedCardHtml = '';
+  if (S.expandedSegCard) {
+    const segExp = allPeriodExp.filter(e => e.segment===S.expandedSegCard).sort((a,b) => b.date.localeCompare(a.date));
+    expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(S.expandedSegCard) + '</div>' +
+      (segExp.length===0?'<div class="empty-state" style="padding:12px 0">Sem gastos.</div>':segExp.map(e=>expenseEntryHtml(e)).join('')) + '</div>';
+  }
+
   const sorted = applySortList(expenses, S.gastosSort);
-  const list = sorted.length === 0
-    ? `<div class="empty-state">Nenhum gasto em ${navR.label}.</div>`
+  const list   = sorted.length===0
+    ? '<div class="empty-state">Nenhum gasto em ' + navR.label + '.</div>'
     : sorted.map(e => expenseEntryHtml(e)).join('');
 
-  el.innerHTML = `
-    <h1 class="section-title">Gastos</h1>
-    <div class="month-nav"><button class="month-nav-btn" onclick="navMonth('gastos',-1)">&#8249;</button><span class="month-nav-label">${navR.label}</span><button class="month-nav-btn" onclick="navMonth('gastos',1)">&#8250;</button></div>${navR.isFuture ? '<div class="month-nav-future">projeção</div>' : ''}
-    ${buildFilterTags('gastosSegFilter', filterItems)}
-    ${filtUsedSegs.length > 0 ? `
-      <div class="chart-title">Distribuição por segmento</div>
-      <div class="chart-wrap" style="height:240px"><canvas id="chart-g-donut"></canvas></div>` : ''}
-    <div class="chart-title">Histórico por ciclo</div>
-    <div class="chart-wrap" style="height:180px"><canvas id="chart-g-bar"></canvas></div>
-    <hr class="divider">
-    <div class="list-header">Todos os gastos</div>
-    ${buildSortBar('gastosSort')}
-    <div class="entry-list">${list}</div>
-    <div class="export-row">
-      <button class="btn btn-export" onclick="exportGastosSection()">↓ Exportar Excel</button>
-    </div>`;
+  el.innerHTML =
+    '<h1 class="section-title">Gastos</h1>' +
+    '<div class="month-nav"><button class="month-nav-btn" onclick="navMonth(\'gastos\',-1)">&#8249;</button>' +
+    '<span class="month-nav-label">' + navR.label + '</span>' +
+    '<button class="month-nav-btn" onclick="navMonth(\'gastos\',1)">&#8250;</button></div>' +
+    (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
+    '<div class="total-card"><div class="total-card-label">Total gasto</div><div class="total-card-value">' + brl(totalGasto) + '</div></div>' +
+    buildFilterTags('gastosSegFilter', filterItems) +
+    '<div class="cards-scroll">' + segCards + '</div>' +
+    expandedCardHtml +
+    (filtUsedSegs.length > 0 ?
+      '<div class="chart-title">Distribuição por segmento</div><div class="chart-wrap" style="height:240px"><canvas id="chart-g-donut"></canvas></div>' : '') +
+    '<hr class="divider">' +
+    '<div class="list-header">Todos os gastos</div>' +
+    buildSortBar('gastosSort') +
+    '<div class="entry-list">' + list + '</div>' +
+    '<div class="export-row"><button class="btn btn-export" onclick="exportGastosSection()">&#8595; Exportar Excel</button></div>';
 
   if (filtUsedSegs.length > 0) {
     mkChart('chart-g-donut', 'doughnut', {
       labels: filtUsedSegs,
-      datasets: [{
-        data: filtUsedSegs.map(s => filtSegTotals[s]),
-        backgroundColor: CHART_COLORS.slice(0, filtUsedSegs.length),
-        borderWidth: 0, hoverOffset: 4
-      }]
+      datasets: [{ data: filtUsedSegs.map(s=>filtSegTotals[s]), backgroundColor: CHART_COLORS.slice(0,filtUsedSegs.length), borderWidth:0, hoverOffset:4 }]
     }, { cutout: '55%' });
   }
-
-  mkChart('chart-g-bar', 'bar', {
-    labels: cycles.map(c => c.label),
-    datasets: [{ data: cycleAmt, backgroundColor: '#7D39EB', borderRadius: 3, borderSkipped: false }]
-  });
 }
 
 function exportGastosSection() {
@@ -1136,45 +1189,51 @@ function exportGastosSection() {
 // SECTION 3 — FATURAMENTOS (analysis)
 // ════════════════════════════════════════════════════
 function renderFaturamentos() {
-  const el = document.getElementById('section-faturamentos');
+  const el   = document.getElementById('section-faturamentos');
   const navR = getNavCycleRange(S.fatNavOffset);
   const { start, end } = navR;
   const allPeriodInc = loadInc().filter(i => i.date >= start && i.date <= end);
 
+  const totalRec  = allPeriodInc.reduce((s,i) => s+i.amount, 0);
   const accTotals = {};
   ACCOUNTS.forEach(a => accTotals[a] = 0);
-  allPeriodInc.forEach(i => { if (accTotals[i.account] !== undefined) accTotals[i.account] += i.amount; });
-  const usedAccs = ACCOUNTS.filter(a => accTotals[a] > 0);
+  allPeriodInc.forEach(i => { if(accTotals[i.account]!==undefined) accTotals[i.account]+=i.amount; });
+  const usedAccs    = ACCOUNTS.filter(a => accTotals[a] > 0);
   const filterItems = [{label:'Todos',value:null}, ...usedAccs.map(a => ({label:a,value:a}))];
 
-  // Apply account filter
   const accF   = S.fatAccFilter;
-  const income = accF ? allPeriodInc.filter(i => i.account === accF) : allPeriodInc;
+  const income = accF ? allPeriodInc.filter(i => i.account===accF) : allPeriodInc;
 
   const sorted = applySortList(income, S.fatSort);
-  const list = sorted.length === 0
-    ? `<div class="empty-state">Nenhum faturamento em ${navR.label}.</div>`
+  const list   = sorted.length===0
+    ? '<div class="empty-state">Nenhum faturamento em ' + navR.label + '.</div>'
     : sorted.map(i => incomeEntryHtml(i)).join('');
 
-  el.innerHTML = `
-    <h1 class="section-title">Faturamentos</h1>
-    <div class="month-nav"><button class="month-nav-btn" onclick="navMonth('fat',-1)">&#8249;</button><span class="month-nav-label">${navR.label}</span><button class="month-nav-btn" onclick="navMonth('fat',1)">&#8250;</button></div>${navR.isFuture ? '<div class="month-nav-future">projeção</div>' : ''}
-    ${buildFilterTags('fatAccFilter', filterItems)}
-    <div class="chart-title">Total por conta</div>
-    <div class="chart-wrap" style="height:180px"><canvas id="chart-f-bar"></canvas></div>
-    <hr class="divider">
-    <div class="list-header">Todos os faturamentos</div>
-    ${buildSortBar('fatSort')}
-    <div class="entry-list">${list}</div>
-    <div class="export-row">
-      <button class="btn btn-export" onclick="exportFatSection()">↓ Exportar Excel</button>
-    </div>`;
+  // Doughnut by account
+  const chartAccs = accF ? usedAccs.filter(a=>a===accF) : usedAccs;
 
-  const chartData = ACCOUNTS.map(a => accF ? (a === accF ? accTotals[a] : 0) : accTotals[a]);
-  mkChart('chart-f-bar', 'bar', {
-    labels: ACCOUNTS,
-    datasets: [{ data: chartData, backgroundColor: '#7D39EB', borderRadius: 3, borderSkipped: false }]
-  }, { scales: { x: { ticks: { font: { size: 9 } } } } });
+  el.innerHTML =
+    '<h1 class="section-title">Faturamentos</h1>' +
+    '<div class="month-nav"><button class="month-nav-btn" onclick="navMonth(\'fat\',-1)">&#8249;</button>' +
+    '<span class="month-nav-label">' + navR.label + '</span>' +
+    '<button class="month-nav-btn" onclick="navMonth(\'fat\',1)">&#8250;</button></div>' +
+    (navR.isFuture ? '<div class="month-nav-future">projeção</div>' : '') +
+    '<div class="total-card"><div class="total-card-label">Total recebido</div><div class="total-card-value positive">' + brl(totalRec) + '</div></div>' +
+    buildFilterTags('fatAccFilter', filterItems) +
+    (chartAccs.length > 0 ?
+      '<div class="chart-title">Distribuição por conta</div><div class="chart-wrap" style="height:220px"><canvas id="chart-f-donut"></canvas></div>' : '') +
+    '<hr class="divider">' +
+    '<div class="list-header">Todos os faturamentos</div>' +
+    buildSortBar('fatSort') +
+    '<div class="entry-list">' + list + '</div>' +
+    '<div class="export-row"><button class="btn btn-export" onclick="exportFatSection()">&#8595; Exportar Excel</button></div>';
+
+  if (chartAccs.length > 0) {
+    mkChart('chart-f-donut', 'doughnut', {
+      labels: chartAccs,
+      datasets: [{ data: chartAccs.map(a=>accTotals[a]), backgroundColor: CHART_COLORS.slice(0,chartAccs.length), borderWidth:0, hoverOffset:4 }]
+    }, { cutout: '55%' });
+  }
 }
 
 function exportFatSection() {
