@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Stash</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28.35 28.35'><rect width='28.35' height='28.35' fill='%23c6ff33' rx='4'/><circle cx='14.17' cy='14.17' r='7.09' fill='%23fff'/><path fill='%237f3aef' d='M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z'/><path fill='%237f3aef' d='M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z'/><path d='M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z'/><path d='M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28.35 28.35'><rect width='28.35' height='28.35' fill='%23c6ff33' rx='4'/><circle cx='14.17' cy='14.17' r='7.09' fill='%23fff'/><path fill='%237f3aef' d='M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z'/><path fill='%237f3aef' d='M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z'/><path d='M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z'/><path d='M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z'/></svg>">
+<link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Stash&quot;,&quot;short_name&quot;:&quot;Stash&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;%23000000&quot;,&quot;theme_color&quot;:&quot;%23000000&quot;,&quot;icons&quot;:[]}">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Stash">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#000;--accent:#7D39EB;--lime:#C6FF33;--text:#fff;--border:rgba(255,255,255,0.12);--muted:rgba(255,255,255,0.4);--font:'DM Sans',sans-serif}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+
+/* ── AUTH ── */
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-box{width:100%;max-width:320px}
+.auth-title{font-size:22px;font-weight:600;margin:0 0 6px}
+.auth-sub{color:var(--muted);font-size:14px;margin:0 0 32px}
+
+/* ── APP ── */
+#app{max-width:480px;margin:0 auto;padding-bottom:84px;min-height:100vh}
+.section{display:none;opacity:0;transition:opacity 150ms ease;padding:20px 16px 28px}
+.section.visible{opacity:1}
+
+/* ── BOTTOM NAV ── */
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#000;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;padding:6px 0 10px;z-index:100}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 6px;color:var(--muted);font-size:10px;font-weight:500;letter-spacing:0.02em;transition:color 150ms;user-select:none;border:none;background:none;flex:1;min-width:0}
+.nav-item.active{color:var(--lime)}
+.nav-item svg{width:20px;height:20px;flex-shrink:0}
+
+/* ── INPUTS ── */
+input,select,textarea{width:100%;background:#000;border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;padding:11px 12px;font-family:var(--font);font-size:14px;outline:none;transition:border-color 150ms,box-shadow 150ms;appearance:none;-webkit-appearance:none}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(125,57,235,0.2)}
+input[type=checkbox]{width:18px;height:18px;padding:0;flex-shrink:0;accent-color:var(--accent);cursor:pointer;border:none;box-shadow:none;background:transparent}
+input[type=date]{color-scheme:dark}
+select option{background:#111;color:#fff}
+::placeholder{color:rgba(255,255,255,0.3)}
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:500}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 20px;border-radius:6px;font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;border:none;transition:opacity 150ms;user-select:none}
+.btn:hover{opacity:.85}.btn:active{opacity:.7}
+.btn-primary{background:var(--accent);color:#fff;width:100%;margin-top:6px}
+.btn-export{background:transparent;color:var(--lime);border:1px solid rgba(198,255,51,0.3);font-size:13px;padding:8px 16px}
+.export-row{display:flex;justify-content:flex-end;margin-top:20px}
+
+/* ── TOGGLES ── */
+.toggle-group{display:flex;gap:8px}
+.toggle-btn{flex:1;padding:10px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:transparent;color:var(--muted);font-family:var(--font);font-size:14px;cursor:pointer;transition:all 150ms}
+.toggle-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(125,57,235,0.1)}
+.toggle-btn:hover:not(.selected){border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.7)}
+
+/* ── CARDS ── */
+.cards-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:24px;scrollbar-width:none}
+.cards-scroll::-webkit-scrollbar{display:none}
+.seg-card{flex:0 0 auto;min-width:118px;border:1px solid var(--border);border-radius:8px;padding:14px}
+.seg-card-name{font-size:11px;color:var(--muted);margin-bottom:6px}
+.seg-card-amount{font-size:15px;font-weight:600}
+.summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px}
+.summary-card{border:1px solid var(--border);border-radius:8px;padding:12px 10px}
+.card-label{font-size:10px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px}
+.card-value{font-size:14px;font-weight:600}
+
+/* ── PERIOD FILTER ── */
+.period-filters{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.period-filters::-webkit-scrollbar{display:none}
+.period-btn{flex:0 0 auto;padding:6px 14px;border:1px solid rgba(255,255,255,0.2);border-radius:20px;background:transparent;color:var(--muted);font-family:var(--font);font-size:13px;cursor:pointer;transition:all 150ms;white-space:nowrap}
+.period-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(125,57,235,0.08)}
+.period-btn:hover:not(.active){color:rgba(255,255,255,.7)}
+.custom-range{display:flex;gap:8px;margin-bottom:20px}
+.custom-range input{flex:1}
+
+/* ── HOME TABS ── */
+.home-tabs{display:flex;gap:8px;margin-bottom:24px}
+.tab-btn{flex:1;padding:10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-family:var(--font);font-size:14px;cursor:pointer;transition:all 150ms}
+.tab-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(125,57,235,0.08)}
+.tab-btn:hover:not(.active){border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.7)}
+
+/* ── APP HEADER ── */
+#app-header{display:flex;align-items:center;gap:8px;padding:18px 16px 0;font-size:15px;font-weight:600;letter-spacing:-0.01em;color:var(--text);user-select:none}
+#app-header svg{flex-shrink:0;display:block}
+
+.section-title{font-size:20px;font-weight:600;margin:0 0 24px}
+
+/* ── ENTRY LIST ── */
+.entry-list{display:flex;flex-direction:column}
+.entry-item{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px}
+.entry-item:last-child{border-bottom:none}
+.entry-date{font-size:12px;color:var(--muted);min-width:36px;flex-shrink:0}
+.entry-main{flex:1;min-width:0}
+.entry-seg{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.entry-right{text-align:right;flex-shrink:0}
+.entry-amount{font-size:14px;font-weight:500}
+.entry-badge{display:inline-block;font-size:10px;background:rgba(125,57,235,0.15);color:var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+.entry-rec{display:inline-block;font-size:10px;background:rgba(198,255,51,0.1);color:var(--lime);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+
+/* ── CHARTS ── */
+.chart-wrap{margin-bottom:28px;position:relative}
+.chart-wrap canvas{max-height:220px}
+.chart-title{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
+
+/* ── MISC ── */
+.empty-state{text-align:center;color:var(--muted);font-size:14px;padding:40px 0}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.list-header{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px}
+.positive{color:var(--lime)}
+.negative{color:#ff4d4d}
+.error-msg{color:#ff4d4d;font-size:13px;margin-top:8px}
+.checkbox-row{display:flex;align-items:center;gap:10px}
+.checkbox-row label{font-size:14px;cursor:pointer;color:rgba(255,255,255,.8)}
+.form-wrap{animation:fadeSlide 150ms ease}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── INSIGHTS ── */
+.insight-card{border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:12px}
+.insight-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px}
+.insight-value{font-size:20px;font-weight:600}
+.insight-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.locked-card{border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:20px;text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px}
+.commitment-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.commitment-row{display:flex;justify-content:space-between;font-size:13px}
+.c-amount{color:var(--lime);font-weight:500}
+.c-zero{color:rgba(255,255,255,.2)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ AUTH ══════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-title" style="display:flex;align-items:center;gap:8px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.35 28.35" width="28" height="28"><rect width="28.35" height="28.35" fill="#c6ff33" rx="4"/><circle cx="14.17" cy="14.17" r="7.09" fill="#fff"/><path fill="#7f3aef" d="M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z"/><path fill="#7f3aef" d="M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z"/><path d="M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z"/><path d="M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z"/></svg>
+      Stash
+    </div>
+    <div class="auth-sub">Digite a senha para continuar.</div>
+    <form onsubmit="doAuth(event)">
+      <div class="form-group">
+        <input type="password" id="auth-pass" placeholder="Senha" autocomplete="current-password" autofocus>
+      </div>
+      <div id="auth-error" class="error-msg" style="display:none">Senha incorreta.</div>
+      <button type="submit" class="btn btn-primary" style="margin-top:12px">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════ APP ══════════════════════ -->
+<div id="app" style="display:none">
+  <div id="app-header">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28.35 28.35" width="24" height="24"><rect width="28.35" height="28.35" fill="#c6ff33" rx="4"/><circle cx="14.17" cy="14.17" r="7.09" fill="#fff"/><path fill="#7f3aef" d="M12.14,14.44c-.1,1.5-1.01,2.75-2.39,3.34l-2.72,1.38-1.71-3.37,2.97-1.51c.06-.03.09-.09.08-.13-.01-.04-.05-.08-.12-.09l-4.71-2.37,1.69-3.39,5.06,2.54c1.24.79,1.94,2.14,1.85,3.6Z"/><path fill="#7f3aef" d="M24.8,16.65l-1.7,3.4-3.51-1.77-1.42-.73c-1.33-.68-2.05-2.12-1.97-3.6.07-1.46.97-2.69,2.31-3.36l2.8-1.4,1.71,3.37-2.93,1.48c-.07.03-.12.04-.12.11,0,.04.03.1.09.13l4.74,2.37Z"/><path d="M19.16,21.32l-3.38,1.71-1.49-2.96c-.02-.06-.07-.09-.09-.09-.04-.01-.09.02-.14.08l-2.37,4.74-3.39-1.69,2.48-4.94c.69-1.18,1.86-1.92,3.22-1.97,1.48-.07,2.83.68,3.56,1.97l1.6,3.15Z"/><path d="M20.03,5.23l-2.38,4.77c-.69,1.37-2.07,2.19-3.61,2.15-1.45-.05-2.71-.87-3.37-2.18l-1.49-2.95,3.38-1.7,1.61,3.12,2.49-4.9,3.37,1.69Z"/></svg>
+    Stash
+  </div>
+  <div class="section" id="section-home"></div>
+  <div class="section" id="section-gastos"></div>
+  <div class="section" id="section-faturamentos"></div>
+  <div class="section" id="section-balanco"></div>
+  <div class="section" id="section-insights"></div>
+</div>
+
+<!-- ══════════════════════ NAV ══════════════════════ -->
+<nav id="bottom-nav" style="display:none">
+  <button class="nav-item" data-section="home" onclick="showSection('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <polyline points="9 21 9 12 15 12 15 21"/>
+    </svg>
+    Início
+  </button>
+  <button class="nav-item" data-section="gastos" onclick="showSection('gastos')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <line x1="2" y1="10" x2="22" y2="10"/>
+    </svg>
+    Gastos
+  </button>
+  <button class="nav-item" data-section="faturamentos" onclick="showSection('faturamentos')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <polyline points="19 12 12 5 5 12"/>
+    </svg>
+    Faturamentos
+  </button>
+  <button class="nav-item" data-section="balanco" onclick="showSection('balanco')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    Balanço
+  </button>
+  <button class="nav-item" data-section="insights" onclick="showSection('insights')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2a7 7 0 017 7c0 2.5-1.3 4.7-3.3 6l-.7 3H9l-.7-3A7.2 7.2 0 015 9a7 7 0 017-7z"/>
+      <line x1="9" y1="21" x2="15" y2="21"/>
+    </svg>
+    Insights
+  </button>
+</nav>
+
+<script>
+// ════════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════════
+const PASS = '6924';
+const SEGMENTS = ['Entretenimento','Transporte','Supermercado','Assinaturas','Vestuário','Moradia','Investimento'];
+const ACCOUNTS  = ['Inter CPF','Inter CNPJ','Nubank CPF','Nubank CNPJ','Sicoob CPF','Sicoob CNPJ'];
+const CHART_COLORS = ['#7D39EB','#C6FF33','#9B5FEF','#A3D900','#5B1DB0','#E8FF85','#3D0D7A'];
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+const S = {
+  section: 'home',
+  homeTab: null,            // 'gastos' | 'faturamentos' | null
+  meioSelected: 'credit_card',
+  gastosPeriod: 'month', gastosFrom: '', gastosTo: '',
+  fatPeriod:    'month', fatFrom:    '', fatTo:    '',
+  balancoPeriod:'month', balancoFrom:'', balancoTo: '',
+};
+const CI = {}; // active Chart.js instances keyed by canvas id
+
+// ════════════════════════════════════════════════════
+// DATA LAYER
+// ════════════════════════════════════════════════════
+const loadExp = () => JSON.parse(localStorage.getItem('pf_expenses') || '[]');
+const saveExp = a  => localStorage.setItem('pf_expenses', JSON.stringify(a));
+const loadInc = () => JSON.parse(localStorage.getItem('pf_income')   || '[]');
+const saveInc = a  => localStorage.setItem('pf_income',   JSON.stringify(a));
+const uid = () => crypto.randomUUID();
+
+// ════════════════════════════════════════════════════
+// DATE & CYCLE UTILITIES
+// ════════════════════════════════════════════════════
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function todayISO() { return isoDate(new Date()); }
+
+function cycleStart(ref) {
+  const d = ref ? (typeof ref === 'string' ? new Date(ref + 'T12:00:00') : new Date(ref)) : new Date();
+  return d.getDate() >= 3
+    ? new Date(d.getFullYear(), d.getMonth(), 3)
+    : new Date(d.getFullYear(), d.getMonth() - 1, 3);
+}
+
+function addMonths(iso, n) {
+  const d = new Date(iso + 'T12:00:00');
+  d.setMonth(d.getMonth() + n);
+  return isoDate(d);
+}
+
+function lastNCycles(n) {
+  n = n || 6;
+  const cs = cycleStart();
+  return Array.from({ length: n }, (_, i) => {
+    const idx = n - 1 - i;
+    const s = new Date(cs.getFullYear(), cs.getMonth() - idx, 3);
+    const e = idx === 0
+      ? new Date()
+      : new Date(cs.getFullYear(), cs.getMonth() - idx + 1, 2);
+    return {
+      start: isoDate(s),
+      end:   isoDate(e),
+      label: s.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+    };
+  });
+}
+
+function getPeriodRange(period, from, to) {
+  const today = new Date();
+  const t = isoDate(today);
+  if (period === 'week') {
+    const d = new Date(today);
+    const dow = d.getDay();
+    d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+    return { start: isoDate(d), end: t };
+  }
+  if (period === 'month')  return { start: isoDate(cycleStart()), end: t };
+  if (period === 'year')   return { start: `${today.getFullYear()}-01-01`, end: t };
+  if (period === 'custom' && from && to) return { start: from, end: to };
+  return { start: isoDate(cycleStart()), end: t };
+}
+
+function periodLabel(period, from, to) {
+  if (period === 'week')   return 'semana';
+  if (period === 'month')  return 'mes';
+  if (period === 'year')   return 'ano';
+  if (period === 'custom' && from && to) return `${from}_${to}`;
+  return 'periodo';
+}
+
+// ════════════════════════════════════════════════════
+// RECURRING GENERATION  (called once on app load)
+// ════════════════════════════════════════════════════
+function generateRecurring() {
+  const expenses = loadExp();
+  const cs     = isoDate(cycleStart());
+  const nextCs = addMonths(cs, 1);
+
+  // Latest record per recurring group
+  const latest = {};
+  for (const e of expenses) {
+    if (!e.isRecurring) continue;
+    if (!latest[e._groupId] || e.date > latest[e._groupId].date) latest[e._groupId] = e;
+  }
+
+  const add = [];
+  for (const [, e] of Object.entries(latest)) {
+    const hasCurrent = expenses.some(x => x._groupId === e._groupId && x.date >= cs && x.date < nextCs);
+    if (hasCurrent)                                         continue;
+    if (e.recurringEndDate && cs > e.recurringEndDate)      continue;
+    if (e.date >= nextCs)                                   continue; // hasn't started yet
+    add.push({ ...e, id: uid(), date: cs });
+  }
+  if (add.length) saveExp([...expenses, ...add]);
+}
+
+// ════════════════════════════════════════════════════
+// FORMAT HELPERS
+// ════════════════════════════════════════════════════
+const brl = n => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtDate  = iso => iso ? iso.split('-').reverse().join('/')  : '';
+const fmtShort = iso => { if (!iso) return ''; const [,m,d] = iso.split('-'); return `${d}/${m}`; };
+const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ════════════════════════════════════════════════════
+// CHART HELPERS
+// ════════════════════════════════════════════════════
+function destroyAllCharts() {
+  for (const k of Object.keys(CI)) { try { CI[k].destroy(); } catch(e){} delete CI[k]; }
+}
+
+function deepMerge(a, b) {
+  for (const k of Object.keys(b || {})) {
+    if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) {
+      a[k] = deepMerge(typeof a[k] === 'object' ? a[k] : {}, b[k]);
+    } else { a[k] = b[k]; }
+  }
+  return a;
+}
+
+function mkChart(id, type, data, extra) {
+  if (CI[id]) { try { CI[id].destroy(); } catch(e){} delete CI[id]; }
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+
+  const tickFont = { size: 11, family: "'DM Sans',sans-serif" };
+  const opts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(0,0,0,0.75)', padding: 10, cornerRadius: 4, borderWidth: 0,
+        titleFont: tickFont, bodyFont: tickFont,
+        callbacks: { label: ctx => ' ' + brl(ctx.raw) }
+      }
+    },
+    animation: { duration: 400, easing: 'easeOutQuart' }
+  };
+
+  if (type !== 'doughnut') {
+    opts.scales = {
+      x: {
+        grid: { color: 'rgba(255,255,255,0.06)' },
+        border: { display: false },
+        ticks: { color: 'rgba(255,255,255,0.5)', font: tickFont }
+      },
+      y: {
+        grid: { color: 'rgba(255,255,255,0.06)' },
+        border: { display: false },
+        ticks: {
+          color: 'rgba(255,255,255,0.5)',
+          font: tickFont,
+          callback: v => brl(v)
+        }
+      }
+    };
+  } else {
+    opts.plugins.legend = {
+      display: true, position: 'bottom',
+      labels: {
+        color: 'rgba(255,255,255,0.55)',
+        font: tickFont,
+        padding: 10, boxWidth: 10, boxHeight: 10
+      }
+    };
+  }
+
+  if (extra) deepMerge(opts, extra);
+  CI[id] = new Chart(canvas.getContext('2d'), { type, data, options: opts });
+}
+
+// ════════════════════════════════════════════════════
+// EXCEL EXPORT
+// ════════════════════════════════════════════════════
+function chkXLSX() {
+  if (typeof XLSX === 'undefined') { alert('SheetJS indisponível. Verifique sua conexão.'); return false; }
+  return true;
+}
+
+function doExportGastos(expenses, pLabel) {
+  if (!chkXLSX()) return;
+  const rows = [['Data','Segmento','Valor (R$)','Parcelas','Meio','Recorrente']];
+  for (const e of expenses) {
+    rows.push([
+      fmtDate(e.date),
+      e.segment,
+      Number(e.amount.toFixed(2)),
+      e.installments > 1 ? `${e.currentInstallment}/${e.installments}` : 'À vista',
+      e.paymentMethod === 'credit_card' ? 'Cartão de crédito' : 'Pix',
+      e.isRecurring ? 'Sim' : 'Não'
+    ]);
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Gastos');
+  XLSX.writeFile(wb, `gastos-${pLabel}-${todayISO()}.xlsx`);
+}
+
+function doExportFaturamentos(income, pLabel) {
+  if (!chkXLSX()) return;
+  const rows = [['Data','Conta','Cliente','Valor (R$)']];
+  for (const i of income) rows.push([fmtDate(i.date), i.account, i.client, Number(i.amount.toFixed(2))]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Faturamentos');
+  XLSX.writeFile(wb, `faturamentos-${pLabel}-${todayISO()}.xlsx`);
+}
+
+function doExportBalanco(expenses, income, pLabel) {
+  if (!chkXLSX()) return;
+  const wb = XLSX.utils.book_new();
+
+  const er = [['Data','Segmento','Valor (R$)','Parcelas','Meio','Recorrente']];
+  for (const e of expenses) {
+    er.push([fmtDate(e.date), e.segment, Number(e.amount.toFixed(2)),
+      e.installments > 1 ? `${e.currentInstallment}/${e.installments}` : 'À vista',
+      e.paymentMethod === 'credit_card' ? 'Cartão de crédito' : 'Pix',
+      e.isRecurring ? 'Sim' : 'Não']);
+  }
+
+  const ir = [['Data','Conta','Cliente','Valor (R$)']];
+  for (const i of income) ir.push([fmtDate(i.date), i.account, i.client, Number(i.amount.toFixed(2))]);
+
+  const totalE = expenses.reduce((s,e) => s+e.amount, 0);
+  const totalI = income.reduce((s,i)   => s+i.amount, 0);
+  const sr = [['Receitas (R$)','Gastos (R$)','Saldo (R$)'],
+              [Number(totalI.toFixed(2)), Number(totalE.toFixed(2)), Number((totalI-totalE).toFixed(2))]];
+
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(er), 'Gastos');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ir), 'Faturamentos');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sr), 'Resumo');
+  XLSX.writeFile(wb, `balanco-${pLabel}-${todayISO()}.xlsx`);
+}
+
+// ════════════════════════════════════════════════════
+// PERIOD FILTER HTML BUILDER
+// ════════════════════════════════════════════════════
+function buildPeriodFilters(periodKey, fromKey, toKey) {
+  const cur  = S[periodKey];
+  const defs = [['week','Esta semana'],['month','Este mês'],['year','Este ano'],['custom','Personalizado']];
+  const btns = defs.map(([p, label]) =>
+    `<button class="period-btn${cur===p?' active':''}" onclick="setPeriod('${periodKey}','${p}')">${label}</button>`
+  ).join('');
+  const custom = cur === 'custom' ? `
+    <div class="custom-range">
+      <input type="date" id="${fromKey}" value="${S[fromKey]||''}" onchange="setCustomDate('${fromKey}','${periodKey}')">
+      <input type="date" id="${toKey}"   value="${S[toKey]||''}"   onchange="setCustomDate('${toKey}','${periodKey}')">
+    </div>` : '';
+  return `<div class="period-filters">${btns}</div>${custom}`;
+}
+
+function setPeriod(periodKey, val) {
+  S[periodKey] = val;
+  renderSection(S.section);
+}
+
+function setCustomDate(fieldKey, periodKey) {
+  const el = document.getElementById(fieldKey);
+  if (el) S[fieldKey] = el.value;
+  renderSection(S.section);
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 1 — HOME
+// ════════════════════════════════════════════════════
+function renderHome() {
+  const el  = document.getElementById('section-home');
+  const tab = S.homeTab;
+  const tabs = `
+    <div class="home-tabs">
+      <button class="tab-btn${tab==='gastos'?' active':''}"        onclick="toggleHomeTab('gastos')">+ gasto</button>
+      <button class="tab-btn${tab==='faturamentos'?' active':''}"  onclick="toggleHomeTab('faturamentos')">+ faturamento</button>
+    </div>`;
+
+  let body;
+  if      (tab === 'gastos')        body = gastosFormHtml();
+  else if (tab === 'faturamentos')  body = faturamentosFormHtml();
+  else                               body = homeSummaryHtml();
+
+  el.innerHTML = `<h1 class="section-title">Início</h1>${tabs}<div class="form-wrap">${body}</div>`;
+}
+
+function toggleHomeTab(tab) {
+  S.homeTab       = S.homeTab === tab ? null : tab;
+  S.meioSelected  = 'credit_card';
+  renderHome();
+}
+
+/* ─── GASTOS FORM ─── */
+function gastosFormHtml() {
+  const segOpts = SEGMENTS.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  const mCC = S.meioSelected === 'credit_card';
+  return `
+    <form onsubmit="submitGasto(event)">
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" id="g-date" value="${todayISO()}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Segmento</label>
+        <select id="g-seg" required><option value="">Selecione…</option>${segOpts}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" id="g-valor" step="0.01" min="0.01" placeholder="0,00" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Parcelas</label>
+        <input type="number" id="g-parcelas" min="1" max="99" placeholder="À vista (1)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meio de pagamento</label>
+        <div class="toggle-group">
+          <button type="button" id="btn-cc"  class="toggle-btn${mCC?' selected':''}"  onclick="selectMeio('credit_card')">Cartão</button>
+          <button type="button" id="btn-pix" class="toggle-btn${!mCC?' selected':''}" onclick="selectMeio('pix')">Pix</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="checkbox-row">
+          <input type="checkbox" id="g-recorrente" onchange="toggleRecorrente(this)">
+          <label for="g-recorrente">Recorrente</label>
+        </div>
+        <div id="g-termina-wrap" style="display:none;margin-top:10px">
+          <label class="form-label">Termina em (opcional)</label>
+          <input type="date" id="g-termina">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Adicionar gasto</button>
+    </form>`;
+}
+
+function selectMeio(val) {
+  S.meioSelected = val;
+  const cc  = document.getElementById('btn-cc');
+  const pix = document.getElementById('btn-pix');
+  if (cc)  cc.classList.toggle('selected',  val === 'credit_card');
+  if (pix) pix.classList.toggle('selected', val === 'pix');
+}
+
+function toggleRecorrente(cb) {
+  const w = document.getElementById('g-termina-wrap');
+  if (w) w.style.display = cb.checked ? 'block' : 'none';
+}
+
+function submitGasto(ev) {
+  ev.preventDefault();
+  const date      = document.getElementById('g-date').value;
+  const segment   = document.getElementById('g-seg').value;
+  const valor     = parseFloat(document.getElementById('g-valor').value);
+  const pRaw      = parseInt(document.getElementById('g-parcelas').value, 10);
+  const parcelas  = (!pRaw || pRaw < 1) ? 1 : Math.min(pRaw, 99);
+  const isRec     = document.getElementById('g-recorrente').checked;
+  const terminaEl = document.getElementById('g-termina');
+  const recurEnd  = (isRec && terminaEl && terminaEl.value) ? terminaEl.value : null;
+
+  if (!date || !segment || isNaN(valor) || valor <= 0) return;
+
+  const groupId   = uid();
+  const perAmount = valor / parcelas;
+  const newExps   = [];
+
+  for (let k = 1; k <= parcelas; k++) {
+    newExps.push({
+      id: uid(),
+      date: addMonths(date, k - 1),
+      segment,
+      amount: perAmount,
+      installments: parcelas,
+      currentInstallment: k,
+      paymentMethod: S.meioSelected,
+      isRecurring: isRec,
+      recurringEndDate: recurEnd,
+      notes: '',
+      _groupId: groupId
+    });
+  }
+
+  saveExp([...loadExp(), ...newExps]);
+  S.homeTab      = null;
+  S.meioSelected = 'credit_card';
+  renderHome();
+}
+
+/* ─── FATURAMENTOS FORM ─── */
+function faturamentosFormHtml() {
+  const accOpts = ACCOUNTS.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  return `
+    <form onsubmit="submitFaturamento(event)">
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" id="f-date" value="${todayISO()}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conta</label>
+        <select id="f-conta" required><option value="">Selecione…</option>${accOpts}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cliente</label>
+        <input type="text" id="f-cliente" placeholder="Nome do cliente" required maxlength="120">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor (R$)</label>
+        <input type="number" id="f-valor" step="0.01" min="0.01" placeholder="0,00" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Adicionar faturamento</button>
+    </form>`;
+}
+
+function submitFaturamento(ev) {
+  ev.preventDefault();
+  const date   = document.getElementById('f-date').value;
+  const account= document.getElementById('f-conta').value;
+  const client = document.getElementById('f-cliente').value.trim();
+  const valor  = parseFloat(document.getElementById('f-valor').value);
+
+  if (!date || !account || !client || isNaN(valor) || valor <= 0) return;
+
+  saveInc([...loadInc(), { id: uid(), date, account, client, amount: valor, notes: '' }]);
+  S.homeTab = null;
+  renderHome();
+}
+
+/* ─── HOME SUMMARY ─── */
+function homeSummaryHtml() {
+  const cs      = isoDate(cycleStart());
+  const today   = todayISO();
+  const expenses = loadExp().filter(e => e.date >= cs && e.date <= today);
+
+  const totals = {};
+  SEGMENTS.forEach(s => totals[s] = 0);
+  expenses.forEach(e => { if (totals[e.segment] !== undefined) totals[e.segment] += e.amount; });
+
+  const cards = SEGMENTS.map(s => `
+    <div class="seg-card">
+      <div class="seg-card-name">${esc(s)}</div>
+      <div class="seg-card-amount">${brl(totals[s])}</div>
+    </div>`).join('');
+
+  const sorted = [...expenses].sort((a,b) => b.date.localeCompare(a.date));
+
+  const list = sorted.length === 0
+    ? '<div class="empty-state">Nenhum gasto registrado este ciclo.</div>'
+    : sorted.map(e => `
+        <div class="entry-item">
+          <div class="entry-date">${fmtShort(e.date)}</div>
+          <div class="entry-main">
+            <div class="entry-seg">${esc(e.segment)}${e.installments>1
+              ? `<span class="entry-badge">${e.currentInstallment}/${e.installments}</span>`:''}${e.isRecurring
+              ? '<span class="entry-rec">recorrente</span>':''}</div>
+            <div class="entry-sub">${e.paymentMethod==='credit_card'?'Cartão':'Pix'}</div>
+          </div>
+          <div class="entry-right">
+            <div class="entry-amount">${brl(e.amount)}</div>
+          </div>
+        </div>`).join('');
+
+  return `
+    <div class="cards-scroll">${cards}</div>
+    <hr class="divider">
+    <div class="list-header">Gastos do ciclo atual</div>
+    <div class="entry-list">${list}</div>
+    <div class="export-row">
+      <button class="btn btn-export" onclick="exportHomeCycle()">↓ Exportar Excel</button>
+    </div>`;
+}
+
+function exportHomeCycle() {
+  const cs    = isoDate(cycleStart());
+  const today = todayISO();
+  doExportGastos(loadExp().filter(e => e.date >= cs && e.date <= today), 'ciclo-atual');
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 2 — GASTOS (analysis)
+// ════════════════════════════════════════════════════
+function renderGastos() {
+  const el = document.getElementById('section-gastos');
+  const { start, end } = getPeriodRange(S.gastosPeriod, S.gastosFrom, S.gastosTo);
+  const expenses = loadExp().filter(e => e.date >= start && e.date <= end);
+
+  // Segment distribution
+  const segTotals = {};
+  SEGMENTS.forEach(s => segTotals[s] = 0);
+  expenses.forEach(e => { if (segTotals[e.segment] !== undefined) segTotals[e.segment] += e.amount; });
+  const usedSegs = SEGMENTS.filter(s => segTotals[s] > 0);
+
+  // Last 6 cycles bar
+  const allExp   = loadExp();
+  const cycles   = lastNCycles(6);
+  const cycleAmt = cycles.map(c => allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((s,e) => s+e.amount, 0));
+
+  const sorted = [...expenses].sort((a,b) => b.date.localeCompare(a.date));
+  const list = sorted.length === 0
+    ? '<div class="empty-state">Nenhum gasto no período selecionado.</div>'
+    : sorted.map(e => `
+        <div class="entry-item">
+          <div class="entry-date">${fmtShort(e.date)}</div>
+          <div class="entry-main">
+            <div class="entry-seg">${esc(e.segment)}${e.installments>1
+              ? `<span class="entry-badge">${e.currentInstallment}/${e.installments}</span>`:''}</div>
+            <div class="entry-sub">${e.paymentMethod==='credit_card'?'Cartão':'Pix'} · ${fmtDate(e.date)}</div>
+          </div>
+          <div class="entry-right">
+            <div class="entry-amount">${brl(e.amount)}</div>
+          </div>
+        </div>`).join('');
+
+  el.innerHTML = `
+    <h1 class="section-title">Gastos</h1>
+    ${buildPeriodFilters('gastosPeriod','gastosFrom','gastosTo')}
+    ${usedSegs.length > 0 ? `
+      <div class="chart-title">Distribuição por segmento</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-g-donut"></canvas></div>` : ''}
+    <div class="chart-title">Histórico por ciclo</div>
+    <div class="chart-wrap" style="height:180px"><canvas id="chart-g-bar"></canvas></div>
+    <hr class="divider">
+    <div class="list-header">Todos os gastos</div>
+    <div class="entry-list">${list}</div>
+    <div class="export-row">
+      <button class="btn btn-export" onclick="exportGastosSection()">↓ Exportar Excel</button>
+    </div>`;
+
+  if (usedSegs.length > 0) {
+    mkChart('chart-g-donut', 'doughnut', {
+      labels: usedSegs,
+      datasets: [{
+        data: usedSegs.map(s => segTotals[s]),
+        backgroundColor: CHART_COLORS.slice(0, usedSegs.length),
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    }, { cutout: '55%' });
+  }
+
+  mkChart('chart-g-bar', 'bar', {
+    labels: cycles.map(c => c.label),
+    datasets: [{ data: cycleAmt, backgroundColor: '#7D39EB', borderRadius: 3, borderSkipped: false }]
+  });
+}
+
+function exportGastosSection() {
+  const { start, end } = getPeriodRange(S.gastosPeriod, S.gastosFrom, S.gastosTo);
+  doExportGastos(loadExp().filter(e => e.date >= start && e.date <= end),
+    periodLabel(S.gastosPeriod, S.gastosFrom, S.gastosTo));
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 3 — FATURAMENTOS (analysis)
+// ════════════════════════════════════════════════════
+function renderFaturamentos() {
+  const el = document.getElementById('section-faturamentos');
+  const { start, end } = getPeriodRange(S.fatPeriod, S.fatFrom, S.fatTo);
+  const income = loadInc().filter(i => i.date >= start && i.date <= end);
+
+  const accTotals = {};
+  ACCOUNTS.forEach(a => accTotals[a] = 0);
+  income.forEach(i => { if (accTotals[i.account] !== undefined) accTotals[i.account] += i.amount; });
+
+  const sorted = [...income].sort((a,b) => b.date.localeCompare(a.date));
+  const list = sorted.length === 0
+    ? '<div class="empty-state">Nenhum faturamento no período selecionado.</div>'
+    : sorted.map(i => `
+        <div class="entry-item">
+          <div class="entry-date">${fmtShort(i.date)}</div>
+          <div class="entry-main">
+            <div class="entry-seg">${esc(i.account)}</div>
+            <div class="entry-sub">${esc(i.client)} · ${fmtDate(i.date)}</div>
+          </div>
+          <div class="entry-right">
+            <div class="entry-amount positive">${brl(i.amount)}</div>
+          </div>
+        </div>`).join('');
+
+  el.innerHTML = `
+    <h1 class="section-title">Faturamentos</h1>
+    ${buildPeriodFilters('fatPeriod','fatFrom','fatTo')}
+    <div class="chart-title">Total por conta</div>
+    <div class="chart-wrap" style="height:180px"><canvas id="chart-f-bar"></canvas></div>
+    <hr class="divider">
+    <div class="list-header">Todos os faturamentos</div>
+    <div class="entry-list">${list}</div>
+    <div class="export-row">
+      <button class="btn btn-export" onclick="exportFatSection()">↓ Exportar Excel</button>
+    </div>`;
+
+  mkChart('chart-f-bar', 'bar', {
+    labels: ACCOUNTS,
+    datasets: [{ data: ACCOUNTS.map(a => accTotals[a]), backgroundColor: '#7D39EB', borderRadius: 3, borderSkipped: false }]
+  }, { scales: { x: { ticks: { font: { size: 9 } } } } });
+}
+
+function exportFatSection() {
+  const { start, end } = getPeriodRange(S.fatPeriod, S.fatFrom, S.fatTo);
+  doExportFaturamentos(loadInc().filter(i => i.date >= start && i.date <= end),
+    periodLabel(S.fatPeriod, S.fatFrom, S.fatTo));
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 4 — BALANÇO GERAL
+// ════════════════════════════════════════════════════
+function renderBalanco() {
+  const el = document.getElementById('section-balanco');
+  const { start, end } = getPeriodRange(S.balancoPeriod, S.balancoFrom, S.balancoTo);
+  const expenses = loadExp().filter(e => e.date >= start && e.date <= end);
+  const income   = loadInc().filter(i => i.date >= start && i.date <= end);
+
+  const totalE = expenses.reduce((s,e) => s+e.amount, 0);
+  const totalI = income.reduce((s,i)   => s+i.amount, 0);
+  const saldo  = totalI - totalE;
+
+  const allExp = loadExp(), allInc = loadInc();
+  const cycles = lastNCycles(6);
+  const cycleE = cycles.map(c => allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((s,e) => s+e.amount, 0));
+  const cycleI = cycles.map(c => allInc.filter(i => i.date >= c.start && i.date <= c.end).reduce((s,i) => s+i.amount, 0));
+
+  el.innerHTML = `
+    <h1 class="section-title">Balanço geral</h1>
+    ${buildPeriodFilters('balancoPeriod','balancoFrom','balancoTo')}
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="card-label">Receitas</div>
+        <div class="card-value positive">${brl(totalI)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">Gastos</div>
+        <div class="card-value">${brl(totalE)}</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">Saldo</div>
+        <div class="card-value ${saldo >= 0 ? 'positive' : 'negative'}">${brl(saldo)}</div>
+      </div>
+    </div>
+    <div class="chart-title">Receitas vs gastos por ciclo</div>
+    <div class="chart-wrap" style="height:200px"><canvas id="chart-b-bar"></canvas></div>
+    <div class="export-row">
+      <button class="btn btn-export" onclick="exportBalancoSection()">↓ Exportar Excel</button>
+    </div>`;
+
+  const legendFont = { size: 11, family: "'DM Sans',sans-serif" };
+  mkChart('chart-b-bar', 'bar', {
+    labels: cycles.map(c => c.label),
+    datasets: [
+      { label: 'Receitas', data: cycleI, backgroundColor: 'rgba(198,255,51,0.7)', borderRadius: 3, borderSkipped: false },
+      { label: 'Gastos',   data: cycleE, backgroundColor: 'rgba(125,57,235,0.7)', borderRadius: 3, borderSkipped: false }
+    ]
+  }, {
+    plugins: {
+      legend: {
+        display: true, position: 'bottom',
+        labels: { color: 'rgba(255,255,255,0.6)', font: legendFont, boxWidth: 10, boxHeight: 10, padding: 12 }
+      }
+    }
+  });
+}
+
+function exportBalancoSection() {
+  const { start, end } = getPeriodRange(S.balancoPeriod, S.balancoFrom, S.balancoTo);
+  doExportBalanco(
+    loadExp().filter(e => e.date >= start && e.date <= end),
+    loadInc().filter(i => i.date >= start && i.date <= end),
+    periodLabel(S.balancoPeriod, S.balancoFrom, S.balancoTo)
+  );
+}
+
+// ════════════════════════════════════════════════════
+// SECTION 5 — INSIGHTS
+// ════════════════════════════════════════════════════
+function renderInsights() {
+  const el     = document.getElementById('section-insights');
+  const cs     = isoDate(cycleStart());
+  const today  = todayISO();
+  const allExp = loadExp();
+
+  /* 1. Top segment this cycle */
+  const cycleExp   = allExp.filter(e => e.date >= cs && e.date <= today);
+  const cycleTotal = cycleExp.reduce((s,e) => s+e.amount, 0);
+  let topSeg = null;
+  if (cycleTotal > 0) {
+    const byS = {};
+    SEGMENTS.forEach(s => byS[s] = 0);
+    cycleExp.forEach(e => { if (byS[e.segment] !== undefined) byS[e.segment] += e.amount; });
+    const [name, amt] = Object.entries(byS).sort((a,b) => b[1]-a[1])[0];
+    if (amt > 0) topSeg = { name, amt, pct: Math.round(amt / cycleTotal * 100) };
+  }
+
+  /* 2. Future commitments — next 6 billing cycles */
+  const futureExp = allExp.filter(e => e.date > today);
+  const cs0 = cycleStart();
+  const commitments = [];
+  for (let i = 1; i <= 6; i++) {
+    const ms    = new Date(cs0.getFullYear(), cs0.getMonth() + i, 3);
+    const me    = new Date(cs0.getFullYear(), cs0.getMonth() + i + 1, 2);
+    const msISO = isoDate(ms), meISO = isoDate(me);
+    const total = futureExp
+      .filter(e => e.date >= msISO && e.date <= meISO)
+      .reduce((s,e) => s+e.amount, 0);
+    commitments.push({ label: ms.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }), total });
+  }
+
+  /* 3. Average of last 3 cycles */
+  const avg3 = allExp.length > 0
+    ? lastNCycles(3).reduce((s,c) =>
+        s + allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((ss,e) => ss+e.amount, 0), 0) / 3
+    : 0;
+
+  /* 4. Most expensive cycle (all time) */
+  let mostExp = null;
+  if (allExp.length > 0) {
+    const byCycle = {};
+    for (const e of allExp) {
+      const k = isoDate(cycleStart(e.date));
+      byCycle[k] = (byCycle[k] || 0) + e.amount;
+    }
+    const [k, v] = Object.entries(byCycle).sort((a,b) => b[1]-a[1])[0];
+    mostExp = {
+      label: new Date(k + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      total: v
+    };
+  }
+
+  const commitHtml = commitments.some(c => c.total > 0)
+    ? commitments.map(c => `
+        <div class="commitment-row">
+          <span>${esc(c.label)}</span>
+          <span class="${c.total > 0 ? 'c-amount' : 'c-zero'}">${brl(c.total)}</span>
+        </div>`).join('')
+    : '<p style="color:var(--muted);font-size:13px;margin:8px 0 0">Sem parcelas futuras registradas.</p>';
+
+  el.innerHTML = `
+    <h1 class="section-title">Insights</h1>
+
+    <div class="insight-card">
+      <div class="insight-label">Segmento líder — ciclo atual</div>
+      ${topSeg
+        ? `<div class="insight-value">${esc(topSeg.name)}</div>
+           <div class="insight-sub">${brl(topSeg.amt)} · ${topSeg.pct}% do total do ciclo</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem gastos registrados este ciclo.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Comprometimento futuro — próximos 6 ciclos</div>
+      <div class="commitment-list">${commitHtml}</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Média mensal de gastos — últimos 3 ciclos</div>
+      <div class="insight-value">${avg3 > 0 ? brl(avg3) : '—'}</div>
+      ${avg3 > 0 ? `<div class="insight-sub">Média dos últimos 3 ciclos</div>` : ''}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Ciclo mais caro</div>
+      ${mostExp
+        ? `<div class="insight-value">${brl(mostExp.total)}</div>
+           <div class="insight-sub">${esc(mostExp.label)}</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados suficientes.</div>'}
+    </div>
+
+    <div class="locked-card">
+      <div style="font-size:22px;margin-bottom:8px;opacity:.5">🔒</div>
+      <div style="font-weight:500;margin-bottom:6px;color:rgba(255,255,255,.5)">Metas</div>
+      <div>Em breve: defina limites por segmento e metas de poupança</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════
+// ROUTER
+// ════════════════════════════════════════════════════
+function renderSection(name) {
+  destroyAllCharts();
+  if      (name === 'home')          renderHome();
+  else if (name === 'gastos')        renderGastos();
+  else if (name === 'faturamentos')  renderFaturamentos();
+  else if (name === 'balanco')       renderBalanco();
+  else if (name === 'insights')      renderInsights();
+}
+
+function showSection(name) {
+  destroyAllCharts();
+
+  document.querySelectorAll('.section').forEach(s => {
+    s.style.display = 'none';
+    s.classList.remove('visible');
+  });
+  document.querySelectorAll('.nav-item').forEach(n =>
+    n.classList.toggle('active', n.dataset.section === name)
+  );
+
+  S.section = name;
+  renderSection(name);
+
+  const el = document.getElementById(`section-${name}`);
+  el.style.display = 'block';
+  // Double rAF ensures paint before transition
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible')));
+}
+
+// ════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════
+function doAuth(ev) {
+  ev.preventDefault();
+  const val = document.getElementById('auth-pass').value;
+  if (val === PASS) {
+    sessionStorage.setItem('auth', 'ok');
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    document.getElementById('bottom-nav').style.display = '';
+    generateRecurring();
+    showSection('home');
+  } else {
+    const err = document.getElementById('auth-error');
+    err.style.display = 'block';
+    document.getElementById('auth-pass').value = '';
+    document.getElementById('auth-pass').focus();
+    // Shake animation
+    err.style.animation = 'none';
+    void err.offsetHeight;
+  }
+}
+
+// ════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = "'DM Sans', sans-serif";
+    Chart.defaults.font.size   = 11;
+    Chart.defaults.color       = 'rgba(255,255,255,0.6)';
+  }
+
+  if (sessionStorage.getItem('auth') === 'ok') {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = '';
+    document.getElementById('bottom-nav').style.display = '';
+    generateRecurring();
+    showSection('home');
+  }
+  // else: show auth screen (default state)
+});
+</script>
+</body>
+</html>
