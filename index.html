@@ -387,7 +387,7 @@ const S = {
 // API LAYER — Google Sheets backend, localStorage cache
 // ════════════════════════════════════════════════════
 const API_URL = 'https://script.google.com/macros/s/AKfycbxIWWtCbYiwbXN8CLx1BxwwITgntQbbLJyDnyC0NSk_v6Owbsvh9F1OfpCabvRnfHGdfg/exec';
-const DB = { expenses: [], saldo: 0 };
+const DB = { expenses: [] };
 
 async function apiGet(key) {
   try {
@@ -408,25 +408,18 @@ async function apiSet(key, value) {
 
 function loadFromCache() {
   DB.expenses = JSON.parse(localStorage.getItem('pf_expenses') || '[]');
-  DB.saldo    = parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
 }
 
 async function syncFromAPI(force) {
   const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'block';
   try {
-    const [re, rs] = await Promise.all([
-      apiGet('pf_expenses'), apiGet('pf_saldo_disponivel')
-    ]);
+    const re = await apiGet('pf_expenses');
     let changed = false;
     if (Array.isArray(re) && re.length > 0) {
       const ns = JSON.stringify(re);
       const recentSave = !force && (Date.now() - _lastLocalSave) < 60000;
       if (!recentSave && ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
-    }
-    if (rs !== null && rs !== undefined && rs !== '') {
-      const nv = parseFloat(rs) || 0;
-      if (nv !== DB.saldo) { DB.saldo = nv; localStorage.setItem('pf_saldo_disponivel', String(nv)); changed = true; }
     }
     if (changed && sessionStorage.getItem('auth') === 'ok') renderSection(S.section);
     setSyncDot('green');
@@ -459,8 +452,6 @@ function saveExp(arr) {
     _ccsRunning = false;
   }
 }
-function getSaldo()    { return DB.saldo; }
-function setSaldo(val) { DB.saldo = val; localStorage.setItem('pf_saldo_disponivel', String(val)); apiSet('pf_saldo_disponivel', val); }
 const uid = () => crypto.randomUUID();
 
 // ════════════════════════════════════════════════════
@@ -1684,26 +1675,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('pf_wipe_v2', '1');
   }
 
+  // Keep-alive ping to warm up GAS cold start immediately (fire-and-forget)
+  fetch(API_URL + '?key=_ping').catch(() => {});
+
   // Show thin loading bar — data coming from Sheets
   const bar = document.getElementById('sync-bar');
   if (bar) bar.style.display = 'block';
 
   // Preload localStorage as instant fallback while we wait for API
-  try { loadFromCache(); } catch(e) { DB.expenses = []; DB.saldo = 0; }
+  try { loadFromCache(); } catch(e) { DB.expenses = []; }
 
-  // Fetch from Google Sheets — 5-second timeout, then use localStorage cache
+  // Fetch expenses from Google Sheets — 8-second timeout, then fall back to cache
   let apiOk = false;
   try {
-    const _fetch = Promise.all([apiGet('pf_expenses'), apiGet('pf_saldo_disponivel')]);
-    const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
-    const [re, rs] = await Promise.race([_fetch, _timeout]);
+    const _fetch   = apiGet('pf_expenses');
+    const _timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000));
+    const re = await Promise.race([_fetch, _timeout]);
     if (Array.isArray(re) && re.length > 0) {
       DB.expenses = re;
       localStorage.setItem('pf_expenses', JSON.stringify(re));
-    }
-    if (rs !== null && rs !== undefined && rs !== '') {
-      DB.saldo = parseFloat(rs) || 0;
-      localStorage.setItem('pf_saldo_disponivel', String(DB.saldo));
     }
     apiOk = true;
   } catch(e) { /* timeout or network error — DB already has localStorage data */ }
