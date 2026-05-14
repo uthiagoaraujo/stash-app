@@ -185,6 +185,9 @@ select option{background:#111;color:#fff}
 .seg-expanded-title{font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
 .cycle-progress-track{width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-top:8px}
 .cycle-progress-fill{height:100%;background:var(--lime);border-radius:3px}
+.week-sep{padding:14px 0 6px}
+.week-sep-label{display:block;font-size:0.7rem;font-weight:300;color:#C6FF33;font-family:var(--font);margin-bottom:6px;letter-spacing:0.02em}
+.week-sep-line{width:100%;height:1px;background:#C6FF33;opacity:0.6}
 /* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
 .chart-wrap canvas{max-height:220px}
@@ -726,6 +729,32 @@ function setCustomDate(fieldKey, periodKey) {
   renderSection(S.section);
 }
 
+function getMondayISO(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  const dow = d.getDay();
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+  return isoDate(d);
+}
+function weekRangeLabel(mondayISO) {
+  const MO = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const mon = new Date(mondayISO + 'T12:00:00');
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return mon.getMonth() === sun.getMonth()
+    ? `${mon.getDate()}–${sun.getDate()} ${MO[mon.getMonth()]}`
+    : `${mon.getDate()} ${MO[mon.getMonth()]} – ${sun.getDate()} ${MO[sun.getMonth()]}`;
+}
+function buildExpListHtml(sorted, emptyMsg) {
+  if (!sorted.length) return '<div class="empty-state">' + emptyMsg + '</div>';
+  let html = '', lastWk = null;
+  for (const e of sorted) {
+    const wk = getMondayISO(e.date);
+    if (lastWk !== null && wk !== lastWk)
+      html += '<div class="week-sep"><div class="week-sep-label">' + weekRangeLabel(wk) + '</div><div class="week-sep-line"></div></div>';
+    html += expenseEntryHtml(e);
+    lastWk = wk;
+  }
+  return html;
+}
 // ════════════════════════════════════════════════════
 // ENTRY HELPERS — toggle, render, save, delete
 // ════════════════════════════════════════════════════
@@ -1195,9 +1224,7 @@ function homeSummaryHtml() {
   const filtered = S.homeSeg ? allCycleExp.filter(e => e.segment === S.homeSeg) : allCycleExp;
   const sorted   = applySortList(filtered, S.homeSort);
 
-  const list = sorted.length === 0
-    ? '<div class="empty-state">Nenhum gasto registrado este ciclo.</div>'
-    : sorted.map(e => expenseEntryHtml(e)).join('');
+  const list = buildExpListHtml(sorted, 'Nenhum gasto registrado este ciclo.');
 
   // Expanded segment card
   const exSeg = S.expandedSegCard;
@@ -1205,7 +1232,7 @@ function homeSummaryHtml() {
   if (exSeg) {
     const segExp = allCycleExp.filter(e => e.segment === exSeg).sort((a,b) => b.date.localeCompare(a.date));
     expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(exSeg) + '</div>' +
-      (segExp.length === 0 ? '<div class="empty-state" style="padding:12px 0">Sem gastos.</div>' : segExp.map(e => expenseEntryHtml(e)).join('')) +
+      buildExpListHtml(segExp, 'Sem gastos.') +
       '</div>';
   }
 
@@ -1264,13 +1291,11 @@ function renderGastos() {
   if (S.expandedSegCard) {
     const segExp = allPeriodExp.filter(e => e.segment===S.expandedSegCard).sort((a,b) => b.date.localeCompare(a.date));
     expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(S.expandedSegCard) + '</div>' +
-      (segExp.length===0?'<div class="empty-state" style="padding:12px 0">Sem gastos.</div>':segExp.map(e=>expenseEntryHtml(e)).join('')) + '</div>';
+      buildExpListHtml(segExp, 'Sem gastos.') + '</div>';
   }
 
   const sorted = applySortList(expenses, S.gastosSort);
-  const list   = sorted.length===0
-    ? '<div class="empty-state">Nenhum gasto em ' + navR.label + '.</div>'
-    : sorted.map(e => expenseEntryHtml(e)).join('');
+  const list = buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.');
 
   el.innerHTML =
     '<h1 class="section-title">Gastos</h1>' +
