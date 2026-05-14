@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname)));
 
-const MONGO_URI = 'mongodb+srv://uthiagoaraujo:700stash@cluster0.p2bl0xn.mongodb.net/stash?appName=Cluster0';
+const MONGO_URI = 'mongodb+srv://stash:700stash@cluster0.p2bl0xn.mongodb.net/stash?appName=Cluster0';
 
 const dataSchema = new mongoose.Schema({
   key: { type: String, unique: true },
@@ -47,4 +47,5 @@ app.post('/api/data', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Stash running on port ' + PORT));
+
 
