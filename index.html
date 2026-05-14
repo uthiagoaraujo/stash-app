@@ -604,8 +604,14 @@ function fmtCycleLabel(isoStart) {
 
 function applySortList(arr, sortKey) {
   const r = [...arr];
-  if (sortKey === 'date-asc')  r.sort((a,b) => a.date.localeCompare(b.date));
-  if (sortKey === 'date-desc') r.sort((a,b) => b.date.localeCompare(a.date));
+  if (sortKey === 'date-desc') r.sort((a,b) => {
+    const d = b.date.localeCompare(a.date);
+    return d !== 0 ? d : (b.createdAt || 0) - (a.createdAt || 0); // same date: newest added first
+  });
+  if (sortKey === 'date-asc')  r.sort((a,b) => {
+    const d = a.date.localeCompare(b.date);
+    return d !== 0 ? d : (a.createdAt || 0) - (b.createdAt || 0); // same date: oldest added first
+  });
   if (sortKey === 'val-asc')   r.sort((a,b) => a.amount - b.amount);
   if (sortKey === 'val-desc')  r.sort((a,b) => b.amount - a.amount);
   return r;
@@ -1199,16 +1205,16 @@ function submitGasto(ev) {
     for (let k = inicial; k <= parcelas; k++) {
       newExps.push({ id:uid(), date:addMonths(date, k - inicial), segment, amount:valor,
         installments:parcelas, currentInstallment:k, paymentMethod:payMethod,
-        isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
+        isRecurring:false, recurringEndDate:null, notes, _groupId:groupId, createdAt:Date.now() });
     }
   } else if (tipo === 'rec') {
     const te = document.getElementById('g-termina');
     newExps.push({ id:uid(), date, segment, amount:valor, installments:1, currentInstallment:1,
       paymentMethod:payMethod, isRecurring:true, recurringEndDate:(te&&te.value?te.value:null),
-      notes, _groupId:groupId });
+      notes, _groupId:groupId, createdAt:Date.now() });
   } else {
     newExps.push({ id:uid(), date, segment, amount:valor, installments:1, currentInstallment:1,
-      paymentMethod:payMethod, isRecurring:false, recurringEndDate:null, notes, _groupId:groupId });
+      paymentMethod:payMethod, isRecurring:false, recurringEndDate:null, notes, _groupId:groupId, createdAt:Date.now() });
   }
 
   saveExp([...loadExp(), ...newExps]);
@@ -1710,7 +1716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try { generateRecurring(); } catch(e) { console.warn('generateRecurring', e); }
   try { updateCreditCardSummaries(); } catch(e) { console.warn('updateCreditCardSummaries', e); }
-  S.homeFormOpen = true;
+  S.section = 'home';  // explicit default — nav always shows Início active
   showSection('home');
 
   
