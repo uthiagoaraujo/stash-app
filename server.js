@@ -1,4 +1,5 @@
-﻿const express = require('express');
+﻿// Stash v2 - MongoDB
+const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
@@ -46,3 +47,4 @@ app.post('/api/data', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Stash running on port ' + PORT));
+
