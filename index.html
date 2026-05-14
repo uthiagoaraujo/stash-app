@@ -1092,6 +1092,7 @@ function selectFatTipo(tipo) {
 
 function faturamentosFormHtml() {
   const accOpts = ACCOUNTS.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  const tipo = S.fatTipo || 'unico';
   return `
     <form onsubmit="submitFaturamento(event)"><div class="form-group"><label class="form-label">Notas</label><input type="text" id="f-notes" placeholder="Descrição ou referência" maxlength="120"></div>
       <div class="form-group">
@@ -1772,6 +1773,7 @@ function doAuth(ev) {
     document.getElementById('bottom-nav').style.display = '';
     generateRecurring();
     generateRecurringIncome();
+    S.homeTab = 'gastos';
     showSection('home');
   } else {
     const err = document.getElementById('auth-error');
@@ -1815,6 +1817,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('bottom-nav').style.display = '';
     generateRecurring();
     generateRecurringIncome();
+    S.homeTab = 'gastos';
     showSection('home');
   }
   // else: show auth screen (default state)
