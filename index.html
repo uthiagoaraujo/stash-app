@@ -167,6 +167,7 @@ select option{background:#111;color:#fff}
 .month-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
 .month-nav-label{font-size:16px;font-weight:600;min-width:64px;text-align:center}
 .month-nav-future{font-size:11px;color:var(--lime);text-align:center;margin:-14px 0 16px;letter-spacing:0.06em}
+.month-nav-proj{font-size:10px;color:var(--lime);vertical-align:middle;margin-left:5px;font-weight:400;letter-spacing:0.04em}
 .seg-card{cursor:pointer;transition:border-color 150ms}
 .seg-card:hover{border-color:rgba(255,255,255,0.25)}
 .seg-card.seg-active{border-color:var(--accent)}
@@ -302,7 +303,7 @@ const S = {
   meioSelected: 'credit_card',
   gastosPeriod: 'month', gastosFrom: '', gastosTo: '',
   fatPeriod:    'month', fatFrom:    '', fatTo:    '',
-  balancoPeriod:'month', balancoFrom:'', balancoTo: '',
+  balancoPeriod:'month', balancoFrom:'', balancoTo: '', balancoNavOffset: 0,
   expandedEntry: null,   // { type: 'exp'|'inc', id: string }
   gastoTipo: 'avista',   // 'avista' | 'parc' | 'rec'
   fatTipo: 'unico',      // 'unico' | 'rec'
@@ -357,6 +358,18 @@ function lastNCycles(n) {
       end:   isoDate(e),
       label: fmtCycleLabel(isoDate(s))
     };
+  });
+}
+
+function lastNCyclesRelativeTo(n, navOffset) {
+  const cs  = cycleStart();
+  const now = new Date();
+  return Array.from({ length: n }, (_, i) => {
+    const rel = navOffset - (n - 1 - i);
+    const s   = new Date(cs.getFullYear(), cs.getMonth() + rel, 3);
+    const e   = new Date(cs.getFullYear(), cs.getMonth() + rel + 1, 2);
+    const end = (rel === 0 && now < e) ? now : e;
+    return { start: isoDate(s), end: isoDate(end), label: fmtCycleLabel(isoDate(s)) };
   });
 }
 
@@ -876,8 +889,9 @@ function getNavCycleRange(offset) {
   return { start: isoDate(s), end: isoDate(end), label: fmtCycleLabel(isoDate(s)), isFuture: offset > 0 };
 }
 function navMonth(section, dir) {
-  if (section === 'gastos') { S.gastosNavOffset += dir; S.gastosSegFilter = null; }
-  else                      { S.fatNavOffset    += dir; S.fatAccFilter    = null; }
+  if (section === 'gastos')  { S.gastosNavOffset  += dir; S.gastosSegFilter = null; }
+  else if (section === 'balanco') { S.balancoNavOffset += dir; }
+  else                            { S.fatNavOffset     += dir; S.fatAccFilter    = null; }
   S.expandedEntry = null;
   renderSection(S.section);
 }
@@ -1272,31 +1286,43 @@ function exportFatSection() {
 // SECTION 4 — BALANÇO GERAL
 // ════════════════════════════════════════════════════
 function renderBalanco() {
-  const el = document.getElementById('section-balanco');
-  const { start, end } = getPeriodRange(S.balancoPeriod, S.balancoFrom, S.balancoTo);
-  const expenses = loadExp().filter(e => e.date >= start && e.date <= end);
-  const income   = loadInc().filter(i => i.date >= start && i.date <= end);
+  const el   = document.getElementById('section-balanco');
+  const navR = getNavCycleRange(S.balancoNavOffset);
+  const { start, end } = navR;
+  const allExp = loadExp(), allInc = loadInc();
+
+  const expenses = allExp.filter(e => e.date >= start && e.date <= end);
+  const income   = allInc.filter(i => i.date >= start && i.date <= end);
 
   const totalE = expenses.reduce((s,e) => s+e.amount, 0);
   const totalI = income.reduce((s,i)   => s+i.amount, 0);
   const saldo  = totalI - totalE;
 
-  // Saldo disponível + cycle projection (always current cycle)
+  // Saldo disponível projection (always current cycle, independent of nav)
   const saldoDisp = parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
   const csISO = isoDate(cycleStart()), todayStr = todayISO();
-  const cycleExp = loadExp().filter(e => e.date >= csISO && e.date <= todayStr);
-  const cycleInc = loadInc().filter(i => i.date >= csISO && i.date <= todayStr);
-  const cycleE0  = cycleExp.reduce((s,e) => s+e.amount, 0);
-  const cycleI0  = cycleInc.reduce((s,i) => s+i.amount, 0);
-  const projecao = saldoDisp + cycleI0 - cycleE0;
+  const cycleExpCur = allExp.filter(e => e.date >= csISO && e.date <= todayStr);
+  const cycleIncCur = allInc.filter(i => i.date >= csISO && i.date <= todayStr);
+  const projecao = saldoDisp + cycleIncCur.reduce((s,i)=>s+i.amount,0) - cycleExpCur.reduce((s,e)=>s+e.amount,0);
 
-  const allExp = loadExp(), allInc = loadInc();
-  const cycles = lastNCycles(6);
+  // Bar chart: 6 cycles relative to selected nav month
+  const cycles = lastNCyclesRelativeTo(6, S.balancoNavOffset);
   const cycleE = cycles.map(c => allExp.filter(e => e.date >= c.start && e.date <= c.end).reduce((s,e) => s+e.amount, 0));
   const cycleI = cycles.map(c => allInc.filter(i => i.date >= c.start && i.date <= c.end).reduce((s,i) => s+i.amount, 0));
 
+  // Inline projeção tag
+  const projTag = navR.isFuture ? ' <span class="month-nav-proj">projeção</span>' : '';
+
   el.innerHTML = `
     <h1 class="section-title">Balanço geral</h1>
+    <div class="month-nav">
+      <div class="month-nav-arrows">
+        <button class="month-nav-btn" onclick="navMonth('balanco',-1)">&#8249;</button>
+        <span class="month-nav-label">${navR.label}${projTag}</span>
+        <button class="month-nav-btn" onclick="navMonth('balanco',1)">&#8250;</button>
+      </div>
+      <div class="month-nav-total ${saldo >= 0 ? 'positive' : 'negative'}">${brl(saldo)}</div>
+    </div>
     <div class="saldo-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div class="card-label">Saldo disponível</div>
@@ -1315,7 +1341,6 @@ function renderBalanco() {
         <span class="${projecao >= 0 ? 'positive' : 'negative'}">${brl(projecao)}</span>
       </div>
     </div>
-    ${buildPeriodFilters('balancoPeriod','balancoFrom','balancoTo')}
     <div class="summary-cards">
       <div class="summary-card">
         <div class="card-label">Receitas</div>
@@ -1343,8 +1368,7 @@ function renderBalanco() {
     ]
   }, {
     plugins: {
-      legend: {
-        display: true, position: 'bottom',
+      legend: { display: true, position: 'bottom',
         labels: { color: 'rgba(255,255,255,0.6)', font: legendFont, boxWidth: 10, boxHeight: 10, padding: 12 }
       }
     },
