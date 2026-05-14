@@ -369,7 +369,6 @@ async function syncFromAPI() {
       const ns = JSON.stringify(re);
       if (ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
     }
-    }
     if (rs !== null && rs !== undefined && rs !== '') {
       const nv = parseFloat(rs) || 0;
       if (nv !== DB.saldo) { DB.saldo = nv; localStorage.setItem('pf_saldo_disponivel', String(nv)); changed = true; }
@@ -975,7 +974,8 @@ function toggleSegCard(el) {
   if (sc) S.cardsScrollLeft = sc.scrollLeft;
   const seg = el.dataset ? el.dataset.s : el;
   S.expandedSegCard = (S.expandedSegCard === seg) ? null : seg;
-  if (S.section === 'cartao') S.gastosSegFilter = S.expandedSegCard || null;
+  if (S.section === 'cartao') S.cartaoSegFilter = S.expandedSegCard || null;
+  else if (S.section === 'pix') S.pixSegFilter = S.expandedSegCard || null;
   renderSection(S.section);
 }
 // ════════════════════════════════════════════════════
@@ -1563,8 +1563,8 @@ function doAuth(ev) {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = '';
     document.getElementById('bottom-nav').style.display = '';
-    generateRecurring();
-    updateCreditCardSummaries();
+    try { generateRecurring(); } catch(e) { console.warn('generateRecurring', e); }
+    try { updateCreditCardSummaries(); } catch(e) { console.warn('updateCreditCardSummaries', e); }
     S.homeFormOpen = true;
     showSection('home');
   } else {
@@ -1589,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load cache immediately — no blocking
-  loadFromCache();
+  try { loadFromCache(); } catch(e) { DB.expenses = []; DB.saldo = 0; }
   // One-time data wipe — runs once, then sets flag to skip forever
   if (!localStorage.getItem('pf_wipe_v2')) {
     localStorage.removeItem('pf_expenses');
@@ -1607,12 +1607,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = '';
     document.getElementById('bottom-nav').style.display = '';
-    generateRecurring();
-    updateCreditCardSummaries();
+    try { generateRecurring(); } catch(e) { console.warn('generateRecurring', e); }
+    try { updateCreditCardSummaries(); } catch(e) { console.warn('updateCreditCardSummaries', e); }
     S.homeFormOpen = true;
     showSection('home');
     // First load ever: show centered spinner until API responds
-    const hasCacheData = DB.expenses.length > 0 || DB.income.length > 0;
+    const hasCacheData = DB.expenses.length > 0;
     if (!hasCacheData) {
       const fls = document.getElementById('first-load-spinner');
       if (fls) fls.style.display = 'flex';
