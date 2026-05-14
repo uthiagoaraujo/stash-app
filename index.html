@@ -1897,6 +1897,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load cache immediately — no blocking
   loadFromCache();
+  // One-time data wipe — runs once, then sets flag to skip forever
+  if (!localStorage.getItem('pf_wipe_done')) {
+    localStorage.removeItem('pf_expenses');
+    localStorage.removeItem('pf_income');
+    DB.expenses = [];
+    DB.income   = [];
+    apiSet('pf_expenses', []);
+    apiSet('pf_income',   []);
+    localStorage.setItem('pf_wipe_done', '1');
+  }
+
 
   setTimeout(() => { const p = document.getElementById('auth-pass'); if (p && !sessionStorage.getItem('auth')) p.focus(); }, 50);
 
