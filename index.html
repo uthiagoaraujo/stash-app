@@ -19,6 +19,16 @@
 :root{--bg:#000;--accent:#7D39EB;--lime:#C6FF33;--text:#fff;--border:rgba(255,255,255,0.12);--muted:rgba(255,255,255,0.4);--font:'DM Sans',sans-serif}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
 
+
+/* ── SYNC BAR (top progress, background API sync) ── */
+#sync-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;display:none;background:rgba(198,255,51,0.12);overflow:hidden}
+#sync-bar::after{content:'';display:block;height:100%;width:40%;background:#C6FF33;animation:syncSlide 1.2s ease-in-out infinite}
+@keyframes syncSlide{0%{transform:translateX(-160%)}100%{transform:translateX(400%)}}
+
+/* ── FIRST LOAD SPINNER (no cached data) ── */
+#first-load-spinner{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:#000}
+#fls-inner{width:32px;height:32px;border-radius:50%;border:2.5px solid rgba(198,255,51,0.18);border-top-color:#C6FF33;animation:flsSpin 0.75s linear infinite}
+@keyframes flsSpin{to{transform:rotate(360deg)}}
 /* ── AUTH ── */
 #auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .auth-box{width:100%;max-width:320px;background:linear-gradient(135deg,#7D39EB 0%,#C6FF33 100%);background-size:200% 200%;border-radius:24px;padding:2rem;animation:authGrad 6s ease-in-out infinite alternate}
@@ -334,26 +344,37 @@ async function apiSet(key, value) {
   } catch(e) {}
 }
 
-async function initData() {
+function loadFromCache() {
+  DB.expenses = JSON.parse(localStorage.getItem('pf_expenses') || '[]');
+  DB.income   = JSON.parse(localStorage.getItem('pf_income')   || '[]');
+  DB.saldo    = parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
+}
+
+async function syncFromAPI() {
+  const bar = document.getElementById('sync-bar');
+  if (bar) bar.style.display = 'block';
   try {
     const [re, ri, rs] = await Promise.all([
       apiGet('pf_expenses'), apiGet('pf_income'), apiGet('pf_saldo_disponivel')
     ]);
-    DB.expenses = (Array.isArray(re) && re.length > 0) ? re
-      : JSON.parse(localStorage.getItem('pf_expenses') || '[]');
-    DB.income   = (Array.isArray(ri) && ri.length > 0) ? ri
-      : JSON.parse(localStorage.getItem('pf_income')   || '[]');
-    DB.saldo    = (rs !== null && rs !== undefined && rs !== '')
-      ? (parseFloat(rs) || 0)
-      : parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
-  } catch(e) {
-    DB.expenses = JSON.parse(localStorage.getItem('pf_expenses') || '[]');
-    DB.income   = JSON.parse(localStorage.getItem('pf_income')   || '[]');
-    DB.saldo    = parseFloat(localStorage.getItem('pf_saldo_disponivel') || '0');
-  }
-  localStorage.setItem('pf_expenses',         JSON.stringify(DB.expenses));
-  localStorage.setItem('pf_income',           JSON.stringify(DB.income));
-  localStorage.setItem('pf_saldo_disponivel', String(DB.saldo));
+    let changed = false;
+    if (Array.isArray(re) && re.length > 0) {
+      const ns = JSON.stringify(re);
+      if (ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
+    }
+    if (Array.isArray(ri) && ri.length > 0) {
+      const ns = JSON.stringify(ri);
+      if (ns !== JSON.stringify(DB.income)) { DB.income = ri; localStorage.setItem('pf_income', ns); changed = true; }
+    }
+    if (rs !== null && rs !== undefined && rs !== '') {
+      const nv = parseFloat(rs) || 0;
+      if (nv !== DB.saldo) { DB.saldo = nv; localStorage.setItem('pf_saldo_disponivel', String(nv)); changed = true; }
+    }
+    if (changed && sessionStorage.getItem('auth') === 'ok') renderSection(S.section);
+  } catch(e) {}
+  if (bar) { bar.style.opacity = '0'; bar.style.transition = 'opacity 400ms'; setTimeout(() => { bar.style.display = 'none'; bar.style.opacity = '1'; bar.style.transition = ''; }, 420); }
+  const fls = document.getElementById('first-load-spinner');
+  if (fls) fls.style.display = 'none';
 }
 const CI = {}; // active Chart.js instances keyed by canvas id
 
@@ -1789,27 +1810,17 @@ function doAuth(ev) {
 // ════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', async () => {
-  const __ls = document.getElementById('loading-screen');
-  if (__ls) __ls.style.display = 'flex';
+document.addEventListener('DOMContentLoaded', () => {
   if (typeof Chart !== 'undefined') {
     Chart.defaults.font.family = "'DM Sans', sans-serif";
     Chart.defaults.font.size   = 11;
     Chart.defaults.color       = 'rgba(255,255,255,0.6)';
   }
-  await initData();
-  if (__ls) __ls.style.display = 'none';
-  setTimeout(() => { const p = document.getElementById('auth-pass'); if (p && !sessionStorage.getItem('auth')) p.focus(); }, 50);
 
-  // Seed: only if API + localStorage both returned empty
-  if (DB.expenses.length === 0 && DB.income.length === 0) {
-    localStorage.setItem('pf_expenses', JSON.stringify([]));
-    localStorage.setItem('pf_income', JSON.stringify([]));
-    DB.expenses = JSON.parse(localStorage.getItem('pf_expenses')||'[]');
-    DB.income   = JSON.parse(localStorage.getItem('pf_income')||'[]');
-    apiSet('pf_expenses', DB.expenses);
-    apiSet('pf_income', DB.income);
-  }
+  // Load cache immediately — no blocking
+  loadFromCache();
+
+  setTimeout(() => { const p = document.getElementById('auth-pass'); if (p && !sessionStorage.getItem('auth')) p.focus(); }, 50);
 
   if (sessionStorage.getItem('auth') === 'ok') {
     document.getElementById('auth-screen').style.display = 'none';
@@ -1819,8 +1830,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     generateRecurringIncome();
     S.homeTab = 'gastos';
     showSection('home');
+    // First load ever: show centered spinner until API responds
+    const hasCacheData = DB.expenses.length > 0 || DB.income.length > 0;
+    if (!hasCacheData) {
+      const fls = document.getElementById('first-load-spinner');
+      if (fls) fls.style.display = 'flex';
+    }
   }
   // else: show auth screen (default state)
+
+  // Background API sync — non-blocking
+  syncFromAPI();
 
   if (!localStorage.getItem('pf_icon_png')) {
     try {
@@ -1839,6 +1859,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {}
   }});
 </script>
-<div id="loading-screen" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;background:#000;color:rgba(255,255,255,0.4);font-family:'DM Sans',sans-serif;font-size:13px;letter-spacing:0.14em">carregando…</div>
+<div id="sync-bar"></div><div id="first-load-spinner"><div id="fls-inner"></div></div>
 </body>
 </html>
