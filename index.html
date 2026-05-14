@@ -321,6 +321,7 @@ const S = {
   gastoTipo: 'avista',   // 'avista' | 'parc' | 'rec'
   fatTipo: 'unico',      // 'unico' | 'rec'
   pendingGroupEdit: null,
+  pendingDeleteRecurring: null,
   homeSort: 'date-desc', homeSeg: null, expandedSegCard: null,
   gastosSort: 'date-desc', gastosSegFilter: null, gastosNavOffset: 0,
   fatSort:    'date-desc', fatAccFilter: null,    fatNavOffset: 0,
@@ -469,24 +470,37 @@ function periodLabel(period, from, to) {
 // RECURRING GENERATION  (called once on app load)
 // ════════════════════════════════════════════════════
 function generateRecurring() {
-  const expenses = loadExp();
-  const cs     = isoDate(cycleStart());
-  const nextCs = addMonths(cs, 1);
+  const expenses   = loadExp();
+  const today      = todayISO();
+  const limit      = addMonths(today, 24);
+  const existingIds = new Set(expenses.map(e => e.id));
 
-  // Latest record per recurring group
-  const latest = {};
+  // Group recurring by notes key
+  const groups = {};
   for (const e of expenses) {
     if (!e.isRecurring) continue;
-    if (!latest[e._groupId] || e.date > latest[e._groupId].date) latest[e._groupId] = e;
+    const key = e.notes || e._groupId || e.id;
+    if (!groups[key]) groups[key] = { template: e, months: new Set() };
+    groups[key].months.add(e.date.slice(0, 7));
+    if (e.date < groups[key].template.date) groups[key].template = e;
   }
 
   const add = [];
-  for (const [, e] of Object.entries(latest)) {
-    const hasCurrent = expenses.some(x => x._groupId === e._groupId && x.date >= cs && x.date < nextCs);
-    if (hasCurrent)                                         continue;
-    if (e.recurringEndDate && cs > e.recurringEndDate)      continue;
-    if (e.date >= nextCs)                                   continue; // hasn't started yet
-    add.push({ ...e, id: uid(), date: cs });
+  for (const [, { template: t, months }] of Object.entries(groups)) {
+    const safeKey = (t.notes || '').toUpperCase().replace(/[^A-Z0-9]/g, '_') || 'REC';
+    let cur = addMonths(t.date, 1); // start from month after original
+    while (cur <= limit) {
+      if (t.recurringEndDate && cur > t.recurringEndDate) break;
+      const ym = cur.slice(0, 7);
+      const [y, m] = ym.split('-');
+      const rid = `recur_${safeKey}_${y}_${m}`;
+      if (!months.has(ym) && !existingIds.has(rid)) {
+        add.push({ ...t, id: rid, date: cur, installments: 1, currentInstallment: 1 });
+        months.add(ym);
+        existingIds.add(rid);
+      }
+      cur = addMonths(cur, 1);
+    }
   }
   if (add.length) saveExp([...expenses, ...add]);
 }
@@ -787,8 +801,8 @@ function saveExpEntry(id) {
   if (!date || !seg || isNaN(val) || val <= 0) return;
   expenses[idx] = { ...orig, date, segment: seg, amount: val, notes, paymentMethod: mCC ? 'credit_card' : 'pix' };
   saveExp(expenses);
-  if ((orig.installments > 1 || orig.isRecurring) && (seg !== orig.segment || notes !== orig.notes)) {
-    S.pendingGroupEdit = { id, groupId: orig._groupId, newSeg: seg, newNotes: notes, isRec: orig.isRecurring };
+  if ((orig.installments > 1 || orig.isRecurring) && (seg !== orig.segment || notes !== orig.notes || val !== orig.amount)) {
+    S.pendingGroupEdit = { id, groupId: orig._groupId, origNotes: orig.notes, newSeg: seg, newNotes: notes, newAmt: val, isRec: orig.isRecurring };
     S.expandedEntry = { type: 'exp', id };
   } else {
     S.expandedEntry = null;
@@ -799,10 +813,14 @@ function saveExpEntry(id) {
 function applyGroupEdit(applyAll) {
   if (!S.pendingGroupEdit) return;
   if (applyAll) {
-    const { groupId, newSeg, newNotes } = S.pendingGroupEdit;
-    const updated = loadExp().map(e =>
-      e._groupId === groupId ? { ...e, segment: newSeg, notes: newNotes } : e
-    );
+    const { groupId, origNotes, newSeg, newNotes, newAmt, isRec } = S.pendingGroupEdit;
+    const updated = loadExp().map(e => {
+      if (isRec) {
+        return (e.isRecurring && e.notes === origNotes)
+          ? { ...e, segment: newSeg, notes: newNotes, amount: newAmt } : e;
+      }
+      return e._groupId === groupId ? { ...e, segment: newSeg, notes: newNotes } : e;
+    });
     saveExp(updated);
   }
   S.pendingGroupEdit = null;
@@ -811,7 +829,27 @@ function applyGroupEdit(applyAll) {
 }
 
 function deleteExpEntry(id) {
-  saveExp(loadExp().filter(e => e.id !== id));
+  const e = loadExp().find(x => x.id === id);
+  if (e && e.isRecurring) {
+    S.pendingDeleteRecurring = { id, notes: e.notes };
+    S.expandedEntry = { type: 'exp', id };
+    renderSection(S.section);
+  } else {
+    saveExp(loadExp().filter(x => x.id !== id));
+    S.expandedEntry = null;
+    renderSection(S.section);
+  }
+}
+
+function confirmDeleteRecurring(all) {
+  if (!S.pendingDeleteRecurring) return;
+  const { id, notes } = S.pendingDeleteRecurring;
+  if (all) {
+    saveExp(loadExp().filter(e => !(e.isRecurring && e.notes === notes)));
+  } else {
+    saveExp(loadExp().filter(e => e.id !== id));
+  }
+  S.pendingDeleteRecurring = null;
   S.expandedEntry = null;
   renderSection(S.section);
 }
@@ -863,12 +901,25 @@ function expenseEntryHtml(e) {
     </div>`;
 
   if (!isOpen) return `<div class="entry-item">${header}</div>`;
-  // Group-edit prompt
+
+  // Delete confirm prompt (recurring)
+  if (S.pendingDeleteRecurring && S.pendingDeleteRecurring.id === e.id) {
+    const dn = esc(S.pendingDeleteRecurring.notes || 'este lançamento');
+    return '<div class="entry-item entry-open">' + header +
+      '<div class="entry-edit" style="text-align:center">' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Apagar só este ou todos os lançamentos recorrentes de <strong>' + dn + '</strong>?</div>' +
+      '<div class="edit-actions" style="justify-content:center;gap:10px">' +
+      '<button class="btn btn-outline" style="flex:1" onclick="confirmDeleteRecurring(false)">Só este</button>' +
+      '<button class="btn-del" style="flex:1" onclick="confirmDeleteRecurring(true)">Todos</button>' +
+      '</div></div></div>';
+  }
+
+  // Group-edit prompt (recurring / installments)
   if (S.pendingGroupEdit && S.pendingGroupEdit.id === e.id) {
     const desc = S.pendingGroupEdit.isRec ? 'recorrências' : 'parcelas';
     return '<div class="entry-item entry-open">' + header +
       '<div class="entry-edit" style="text-align:center">' +
-      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aplicar alterações de nome e segmento a todas as ' + desc + ' deste lançamento?</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aplicar alterações a todas as ' + desc + '?</div>' +
       '<div class="edit-actions" style="justify-content:center;gap:10px">' +
       '<button class="btn btn-outline" style="flex:1" onclick="applyGroupEdit(false)">Só este</button>' +
       '<button class="btn btn-primary" style="flex:1;margin-top:0" onclick="applyGroupEdit(true)">Todos</button>' +
