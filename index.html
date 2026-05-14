@@ -1294,8 +1294,10 @@ function renderGastos() {
       buildExpListHtml(segExp, 'Sem gastos.') + '</div>';
   }
 
-  const sorted = applySortList(expenses, S.gastosSort);
-  const list = buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.');
+  // When a card is expanded its inline list IS the list — suppress main list to avoid duplicates
+  const showMainList = !S.expandedSegCard;
+  const sorted = showMainList ? applySortList(expenses, S.gastosSort) : [];
+  const list   = showMainList ? buildExpListHtml(sorted, 'Nenhum gasto em ' + navR.label + '.') : '';
 
   el.innerHTML =
     '<h1 class="section-title">Gastos</h1>' +
@@ -1305,10 +1307,10 @@ function renderGastos() {
     '<div class="cards-scroll">' + segCards + '</div>' +
     expandedCardHtml +
 
-    '<hr class="divider">' +
+    (showMainList ? '<hr class="divider">' +
     '<div class="list-header">Todos os gastos</div>' +
     buildSortBar('gastosSort') +
-    '<div class="entry-list">' + list + '</div>' +
+    '<div class="entry-list">' + list + '</div>' : '') +
     '';
   requestAnimationFrame(() => {
     const sc = document.querySelector('.cards-scroll');
