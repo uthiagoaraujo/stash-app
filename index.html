@@ -144,6 +144,19 @@ select option{background:#111;color:#fff}
 .insight-table td:last-child{text-align:right;font-weight:500}
 .insight-table tr+tr td{border-top:1px solid rgba(255,255,255,0.06)}
 
+/* -- MONTH NAV -- */
+.month-nav{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;padding:4px 0}
+.month-nav-btn{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;line-height:1;transition:all 150ms;flex-shrink:0;padding:0}
+.month-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.month-nav-label{font-size:16px;font-weight:600;min-width:64px;text-align:center}
+.month-nav-future{font-size:11px;color:var(--lime);text-align:center;margin:-14px 0 16px;letter-spacing:0.06em}
+.seg-card{cursor:pointer;transition:border-color 150ms}
+.seg-card:hover{border-color:rgba(255,255,255,0.25)}
+.seg-card.seg-active{border-color:var(--accent)}
+.seg-expanded{border:1px solid rgba(125,57,235,0.3);border-radius:8px;padding:14px;margin-bottom:16px;animation:fadeSlide 150ms ease}
+.seg-expanded-title{font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+.cycle-progress-track{width:100%;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-top:8px}
+.cycle-progress-fill{height:100%;background:var(--lime);border-radius:3px}
 /* ── CHARTS ── */
 .chart-wrap{margin-bottom:28px;position:relative}
 .chart-wrap canvas{max-height:220px}
@@ -259,7 +272,7 @@ select option{background:#111;color:#fff}
 // CONSTANTS
 // ════════════════════════════════════════════════════
 const PASS = '6924';
-const SEGMENTS = ['Alimentação','Entretenimento','Transporte','Supermercado','Assinaturas','Vestuário','Moradia','Investimento'];
+const SEGMENTS = ['Alimentação','Entretenimento','Transporte','Supermercado','Assinaturas','Vestuário','Moradia','Investimento','Casamento','Patrimônio','Outros'];
 const ACCOUNTS  = ['Inter CPF','Inter CNPJ','Nubank CPF','Nubank CNPJ','Sicoob CPF','Sicoob CNPJ'];
 const CHART_COLORS = ['#7D39EB','#C6FF33','#9B5FEF','#A3D900','#5B1DB0','#E8FF85','#3D0D7A'];
 
@@ -274,9 +287,9 @@ const S = {
   fatPeriod:    'month', fatFrom:    '', fatTo:    '',
   balancoPeriod:'month', balancoFrom:'', balancoTo: '',
   expandedEntry: null,   // { type: 'exp'|'inc', id: string }
-  homeSort: 'date-desc', homeSeg: null,
-  gastosSort: 'date-desc', gastosSegFilter: null,
-  fatSort: 'date-desc',    fatAccFilter: null,
+  homeSort: 'date-desc', homeSeg: null, expandedSegCard: null,
+  gastosSort: 'date-desc', gastosSegFilter: null, gastosNavOffset: 0,
+  fatSort:    'date-desc', fatAccFilter: null,    fatNavOffset: 0,
 };
 const CI = {}; // active Chart.js instances keyed by canvas id
 
@@ -803,6 +816,25 @@ function incomeEntryHtml(i) {
   return `<div class="entry-item entry-open">${header}${form}</div>`;
 }
 
+function getNavCycleRange(offset) {
+  const cs  = cycleStart();
+  const s   = new Date(cs.getFullYear(), cs.getMonth() + offset, 3);
+  const e   = new Date(cs.getFullYear(), cs.getMonth() + offset + 1, 2);
+  const now = new Date();
+  const end = (offset === 0 && now < e) ? now : e;
+  return { start: isoDate(s), end: isoDate(end), label: fmtCycleLabel(isoDate(s)), isFuture: offset > 0 };
+}
+function navMonth(section, dir) {
+  if (section === 'gastos') { S.gastosNavOffset += dir; S.gastosSegFilter = null; }
+  else                      { S.fatNavOffset    += dir; S.fatAccFilter    = null; }
+  S.expandedEntry = null;
+  renderSection(S.section);
+}
+function toggleSegCard(el) {
+  const seg = el.dataset ? el.dataset.s : el;
+  S.expandedSegCard = (S.expandedSegCard === seg) ? null : seg;
+  renderHome();
+}
 // ════════════════════════════════════════════════════
 // SECTION 1 — HOME
 // ════════════════════════════════════════════════════
@@ -834,7 +866,7 @@ function gastosFormHtml() {
   const segOpts = SEGMENTS.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
   const mCC = S.meioSelected === 'credit_card';
   return `
-    <form onsubmit="submitGasto(event)">
+    <form onsubmit="submitGasto(event)"><div class="form-group"><label class="form-label">Notas</label><input type="text" id="g-notes" placeholder="Descrição ou referência" maxlength="120"></div>
       <div class="form-group">
         <label class="form-label">Data</label>
         <input type="date" id="g-date" value="${todayISO()}" required>
@@ -913,7 +945,7 @@ function submitGasto(ev) {
       paymentMethod: S.meioSelected,
       isRecurring: isRec,
       recurringEndDate: recurEnd,
-      notes: '',
+      notes: document.getElementById('g-notes') ? document.getElementById('g-notes').value.trim() : '',
       _groupId: groupId
     });
   }
@@ -928,7 +960,7 @@ function submitGasto(ev) {
 function faturamentosFormHtml() {
   const accOpts = ACCOUNTS.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
   return `
-    <form onsubmit="submitFaturamento(event)">
+    <form onsubmit="submitFaturamento(event)"><div class="form-group"><label class="form-label">Notas</label><input type="text" id="f-notes" placeholder="Descrição ou referência" maxlength="120"></div>
       <div class="form-group">
         <label class="form-label">Data</label>
         <input type="date" id="f-date" value="${todayISO()}" required>
@@ -958,7 +990,8 @@ function submitFaturamento(ev) {
 
   if (!date || !account || !client || isNaN(valor) || valor <= 0) return;
 
-  saveInc([...loadInc(), { id: uid(), date, account, client, amount: valor, notes: '' }]);
+  const fNotes = document.getElementById('f-notes') ? document.getElementById('f-notes').value.trim() : '';
+  saveInc([...loadInc(), { id: uid(), date, account, client, amount: valor, notes: fNotes }]);
   S.homeTab = null;
   renderHome();
 }
@@ -976,7 +1009,7 @@ function homeSummaryHtml() {
   // Cards sorted descending by spend
   const sortedSegs = [...SEGMENTS].sort((a,b) => totals[b] - totals[a]);
   const cards = sortedSegs.map(s => `
-    <div class="seg-card">
+    <div class="${S.expandedSegCard===s?'seg-card seg-active':'seg-card'}" onclick="toggleSegCard(this.dataset.s)" data-s="${esc(s)}">
       <div class="seg-card-name">${esc(s)}</div>
       <div class="seg-card-amount">${brl(totals[s])}</div>
     </div>`).join('');
@@ -993,8 +1026,19 @@ function homeSummaryHtml() {
     ? '<div class="empty-state">Nenhum gasto registrado este ciclo.</div>'
     : sorted.map(e => expenseEntryHtml(e)).join('');
 
+  // Expanded segment card
+  const exSeg = S.expandedSegCard;
+  let expandedCardHtml = '';
+  if (exSeg) {
+    const segExp = allCycleExp.filter(e => e.segment === exSeg).sort((a,b) => b.date.localeCompare(a.date));
+    expandedCardHtml = '<div class="seg-expanded"><div class="seg-expanded-title">' + esc(exSeg) + '</div>' +
+      (segExp.length === 0 ? '<div class="empty-state" style="padding:12px 0">Sem gastos.</div>' : segExp.map(e => expenseEntryHtml(e)).join('')) +
+      '</div>';
+  }
+
   return `
     <div class="cards-scroll">${cards}</div>
+    ${expandedCardHtml}
     <hr class="divider">
     <div class="list-header">Gastos do ciclo atual</div>
     ${buildFilterTags('homeSeg', filterItems)}
@@ -1016,7 +1060,8 @@ function exportHomeCycle() {
 // ════════════════════════════════════════════════════
 function renderGastos() {
   const el = document.getElementById('section-gastos');
-  const { start, end } = getPeriodRange(S.gastosPeriod, S.gastosFrom, S.gastosTo);
+  const navR = getNavCycleRange(S.gastosNavOffset);
+  const { start, end } = navR;
   const allPeriodExp = loadExp().filter(e => e.date >= start && e.date <= end);
 
   // Totals for filter tags (unfiltered)
@@ -1045,12 +1090,12 @@ function renderGastos() {
 
   const sorted = applySortList(expenses, S.gastosSort);
   const list = sorted.length === 0
-    ? '<div class="empty-state">Nenhum gasto no período selecionado.</div>'
+    ? `<div class="empty-state">Nenhum gasto em ${navR.label}.</div>`
     : sorted.map(e => expenseEntryHtml(e)).join('');
 
   el.innerHTML = `
     <h1 class="section-title">Gastos</h1>
-    ${buildPeriodFilters('gastosPeriod','gastosFrom','gastosTo')}
+    <div class="month-nav"><button class="month-nav-btn" onclick="navMonth('gastos',-1)">&#8249;</button><span class="month-nav-label">${navR.label}</span><button class="month-nav-btn" onclick="navMonth('gastos',1)">&#8250;</button></div>${navR.isFuture ? '<div class="month-nav-future">projeção</div>' : ''}
     ${buildFilterTags('gastosSegFilter', filterItems)}
     ${filtUsedSegs.length > 0 ? `
       <div class="chart-title">Distribuição por segmento</div>
@@ -1083,9 +1128,8 @@ function renderGastos() {
 }
 
 function exportGastosSection() {
-  const { start, end } = getPeriodRange(S.gastosPeriod, S.gastosFrom, S.gastosTo);
-  doExportGastos(loadExp().filter(e => e.date >= start && e.date <= end),
-    periodLabel(S.gastosPeriod, S.gastosFrom, S.gastosTo));
+  const r = getNavCycleRange(S.gastosNavOffset);
+  doExportGastos(loadExp().filter(e => e.date >= r.start && e.date <= r.end), r.label);
 }
 
 // ════════════════════════════════════════════════════
@@ -1093,7 +1137,8 @@ function exportGastosSection() {
 // ════════════════════════════════════════════════════
 function renderFaturamentos() {
   const el = document.getElementById('section-faturamentos');
-  const { start, end } = getPeriodRange(S.fatPeriod, S.fatFrom, S.fatTo);
+  const navR = getNavCycleRange(S.fatNavOffset);
+  const { start, end } = navR;
   const allPeriodInc = loadInc().filter(i => i.date >= start && i.date <= end);
 
   const accTotals = {};
@@ -1108,12 +1153,12 @@ function renderFaturamentos() {
 
   const sorted = applySortList(income, S.fatSort);
   const list = sorted.length === 0
-    ? '<div class="empty-state">Nenhum faturamento no período selecionado.</div>'
+    ? `<div class="empty-state">Nenhum faturamento em ${navR.label}.</div>`
     : sorted.map(i => incomeEntryHtml(i)).join('');
 
   el.innerHTML = `
     <h1 class="section-title">Faturamentos</h1>
-    ${buildPeriodFilters('fatPeriod','fatFrom','fatTo')}
+    <div class="month-nav"><button class="month-nav-btn" onclick="navMonth('fat',-1)">&#8249;</button><span class="month-nav-label">${navR.label}</span><button class="month-nav-btn" onclick="navMonth('fat',1)">&#8250;</button></div>${navR.isFuture ? '<div class="month-nav-future">projeção</div>' : ''}
     ${buildFilterTags('fatAccFilter', filterItems)}
     <div class="chart-title">Total por conta</div>
     <div class="chart-wrap" style="height:180px"><canvas id="chart-f-bar"></canvas></div>
@@ -1133,9 +1178,8 @@ function renderFaturamentos() {
 }
 
 function exportFatSection() {
-  const { start, end } = getPeriodRange(S.fatPeriod, S.fatFrom, S.fatTo);
-  doExportFaturamentos(loadInc().filter(i => i.date >= start && i.date <= end),
-    periodLabel(S.fatPeriod, S.fatFrom, S.fatTo));
+  const r = getNavCycleRange(S.fatNavOffset);
+  doExportFaturamentos(loadInc().filter(i => i.date >= r.start && i.date <= r.end), r.label);
 }
 
 // ════════════════════════════════════════════════════
@@ -1340,6 +1384,43 @@ function renderInsights() {
     return { seg, avg: tot/3 };
   }).filter(x => x.avg > 0).sort((a,b) => b.avg-a.avg);
 
+
+  /* ── extra insight computations ── */
+  const nextCsDate     = new Date(cs0.getFullYear(), cs0.getMonth()+1, 3);
+  const totalCycleDays = Math.max(1, Math.round((nextCsDate - new Date(cs+'T12:00:00'))/864e5));
+  const daysRemaining  = Math.max(0, Math.round((nextCsDate - new Date(today+'T12:00:00'))/864e5));
+  const pctConsumed    = Math.min(100, Math.round(daysElapsed/totalCycleDays*100));
+  const projCycleAmt   = cycleTotal > 0 ? +(avgDaily * totalCycleDays).toFixed(2) : 0;
+
+  const segTot3 = {};
+  SEGMENTS.forEach(s => segTot3[s] = 0);
+  cycles3.forEach(c => allExp.filter(e => e.date>=c.start&&e.date<=c.end)
+    .forEach(e => { if (segTot3[e.segment]!==undefined) segTot3[e.segment]+=e.amount; }));
+  const topSeg3E = Object.entries(segTot3).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+  let trendTxt = 'sem tendência';
+  if (topSeg3E && cycles3.length >= 2) {
+    const prev3 = allExp.filter(e=>e.date>=cycles3[cycles3.length-2].start&&e.date<=cycles3[cycles3.length-2].end&&e.segment===topSeg3E[0]).reduce((s,e)=>s+e.amount,0);
+    const last3 = allExp.filter(e=>e.date>=cycles3[cycles3.length-1].start&&e.date<=cycles3[cycles3.length-1].end&&e.segment===topSeg3E[0]).reduce((s,e)=>s+e.amount,0);
+    if (prev3>0){const d=Math.round((last3-prev3)/prev3*100);trendTxt=d>0?'crescendo ↑ '+d+'%':d<0?'reduzindo ↓ '+Math.abs(d)+'%':'estável';}
+  }
+
+  const totalPaidInst   = allExp.filter(e=>e.installments>1&&e.date<=today).reduce((s,e)=>s+e.amount,0);
+  const totalFutureInst = allExp.filter(e=>e.installments>1&&e.date>today).reduce((s,e)=>s+e.amount,0);
+
+  const allCycles12 = lastNCycles(12);
+  let bestSaldo=null, worstSaldo=null;
+  for (const c of allCycles12) {
+    const tE=allExp.filter(e=>e.date>=c.start&&e.date<=c.end).reduce((s,e)=>s+e.amount,0);
+    const tI=allInc.filter(i=>i.date>=c.start&&i.date<=c.end).reduce((s,i)=>s+i.amount,0);
+    const sl=tI-tE;
+    if(bestSaldo===null||sl>bestSaldo.saldo) bestSaldo={label:c.label,saldo:sl};
+    if(worstSaldo===null||sl<worstSaldo.saldo) worstSaldo={label:c.label,saldo:sl};
+  }
+
+  const clientTots={},accTots={};
+  allInc.forEach(i=>{clientTots[i.client]=(clientTots[i.client]||0)+i.amount;accTots[i.account]=(accTots[i.account]||0)+i.amount;});
+  const topClient=Object.entries(clientTots).sort((a,b)=>b[1]-a[1])[0];
+  const topAcc   =Object.entries(accTots).sort((a,b)=>b[1]-a[1])[0];
   /* ── HTML ── */
   const commitBarHtml = maxCommit > 0
     ? `<div class="mini-bar-list">${commitments.map(c => `
@@ -1415,6 +1496,72 @@ function renderInsights() {
       ${segAvgHtml}
     </div>
 
+
+    <div class="insight-card">
+      <div class="insight-label">Maior categoria — últimos 3 ciclos</div>
+      ${topSeg3E
+        ? `<div class="insight-value">${esc(topSeg3E[0])}</div><div class="insight-sub">${brl(topSeg3E[1])} total · ${trendTxt}</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Total pago em parcelas</div>
+      <div class="insight-value">${totalPaidInst > 0 ? brl(totalPaidInst) : '—'}</div>
+      ${totalPaidInst > 0 ? '<div class="insight-sub">histórico de parcelas quitadas</div>' : ''}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Total ainda a pagar em parcelas</div>
+      <div class="insight-value negative">${totalFutureInst > 0 ? brl(totalFutureInst) : '—'}</div>
+      ${totalFutureInst > 0 ? '<div class="insight-sub">parcelas futuras já registradas</div>' : ''}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Projeção de gasto do ciclo atual</div>
+      <div class="insight-value">${projCycleAmt > 0 ? brl(projCycleAmt) : '—'}</div>
+      ${projCycleAmt > 0 ? `<div class="insight-sub">mantendo média de ${brl(avgDaily)}/dia</div>` : ''}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Ciclo com melhor saldo</div>
+      ${bestSaldo
+        ? `<div class="insight-value ${bestSaldo.saldo>=0?'positive':'negative'}">${brl(bestSaldo.saldo)}</div><div class="insight-sub">${esc(bestSaldo.label)}</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Ciclo com pior saldo</div>
+      ${worstSaldo
+        ? `<div class="insight-value ${worstSaldo.saldo>=0?'positive':'negative'}">${brl(worstSaldo.saldo)}</div><div class="insight-sub">${esc(worstSaldo.label)}</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Cliente que mais gerou receita</div>
+      ${topClient
+        ? `<div class="insight-value">${esc(topClient[0])}</div><div class="insight-sub">${brl(topClient[1])} total histórico</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Conta que mais recebeu</div>
+      ${topAcc
+        ? `<div class="insight-value">${esc(topAcc[0])}</div><div class="insight-sub">${brl(topAcc[1])} total histórico</div>`
+        : '<div class="insight-sub" style="margin-top:4px">Sem dados.</div>'}
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Dias restantes no ciclo</div>
+      <div class="insight-value">${daysRemaining} ${daysRemaining===1?'dia':'dias'}</div>
+      <div class="insight-sub">de ${totalCycleDays} dias no ciclo total</div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Ciclo consumido</div>
+      <div class="insight-value">${pctConsumed}%</div>
+      <div class="cycle-progress-track"><div class="cycle-progress-fill" style="width:${pctConsumed}%"></div></div>
+      <div class="insight-sub" style="margin-top:6px">${daysElapsed} de ${totalCycleDays} dias decorridos</div>
+    </div>
     <div class="locked-card">
       <div style="font-size:22px;margin-bottom:8px;opacity:.5">🔒</div>
       <div style="font-weight:500;margin-bottom:6px;color:rgba(255,255,255,.5)">Metas</div>
@@ -1491,10 +1638,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Seed demo data on first load (only when localStorage is empty)
-  if (localStorage.getItem('pf_seed_v') !== '4') {
-    localStorage.setItem('pf_expenses', JSON.stringify([{"id":"imp_1","date":"2026-05-02","segment":"Alimentação","amount":39.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_1"},{"id":"imp_2","date":"2026-05-03","segment":"Alimentação","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_2"},{"id":"imp_3","date":"2026-05-04","segment":"Alimentação","amount":12.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_3"},{"id":"imp_4","date":"2026-05-04","segment":"Alimentação","amount":31.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_4"},{"id":"imp_5","date":"2026-05-05","segment":"Alimentação","amount":19.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_5"},{"id":"imp_6","date":"2026-05-05","segment":"Supermercado","amount":25.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_6"},{"id":"imp_7","date":"2026-05-05","segment":"Alimentação","amount":31.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_7"},{"id":"imp_8","date":"2026-05-05","segment":"Alimentação","amount":12.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_8"},{"id":"imp_9","date":"2026-05-05","segment":"Assinaturas","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_9"},{"id":"imp_10","date":"2026-05-05","segment":"Alimentação","amount":39.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_10"},{"id":"imp_11","date":"2026-05-06","segment":"Alimentação","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_11"},{"id":"imp_12","date":"2026-05-06","segment":"Alimentação","amount":12.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_12"},{"id":"imp_13","date":"2026-05-07","segment":"Assinaturas","amount":30.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_13"},{"id":"imp_14","date":"2026-05-07","segment":"Alimentação","amount":7.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_14"},{"id":"imp_15","date":"2026-05-07","segment":"Transporte","amount":18.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_15"},{"id":"imp_16","date":"2026-05-07","segment":"Transporte","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_16"},{"id":"imp_17","date":"2026-05-07","segment":"Transporte","amount":9.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_17"},{"id":"imp_18","date":"2026-05-07","segment":"Assinaturas","amount":73.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_18"},{"id":"imp_19","date":"2026-05-07","segment":"Transporte","amount":198.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_19"},{"id":"imp_20","date":"2026-05-07","segment":"Transporte","amount":14.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_20"},{"id":"imp_21","date":"2026-05-07","segment":"Transporte","amount":43.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_21"},{"id":"imp_22","date":"2026-05-07","segment":"Assinaturas","amount":25.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_22"},{"id":"imp_23","date":"2026-05-07","segment":"Alimentação","amount":18.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_23"},{"id":"imp_24","date":"2026-05-07","segment":"Alimentação","amount":31.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_24"},{"id":"imp_25","date":"2026-05-08","segment":"Entretenimento","amount":65.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_25"},{"id":"imp_26","date":"2026-05-08","segment":"Transporte","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_26"},{"id":"imp_27","date":"2026-05-08","segment":"Transporte","amount":98.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_27"},{"id":"imp_28","date":"2026-05-08","segment":"Assinaturas","amount":110.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_28"},{"id":"imp_29","date":"2026-05-09","segment":"Entretenimento","amount":80.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_29"},{"id":"imp_30","date":"2026-05-09","segment":"Entretenimento","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_30"},{"id":"imp_31","date":"2026-05-09","segment":"Transporte","amount":20.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_31"},{"id":"imp_32","date":"2026-05-09","segment":"Entretenimento","amount":25.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_32"},{"id":"imp_33","date":"2026-05-10","segment":"Alimentação","amount":13.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_33"},{"id":"imp_34","date":"2026-05-10","segment":"Entretenimento","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_34"},{"id":"imp_35","date":"2026-05-10","segment":"Entretenimento","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_35"},{"id":"imp_36","date":"2026-05-11","segment":"Vestuário","amount":147.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_36"},{"id":"imp_37","date":"2026-05-11","segment":"Assinaturas","amount":40.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_37"},{"id":"imp_38","date":"2026-05-11","segment":"Entretenimento","amount":20.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_38"},{"id":"imp_39","date":"2026-05-11","segment":"Supermercado","amount":164.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_39"},{"id":"imp_40","date":"2026-05-12","segment":"Assinaturas","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_40"},{"id":"imp_41","date":"2026-05-12","segment":"Entretenimento","amount":27.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_41"},{"id":"imp_42","date":"2026-05-13","segment":"Supermercado","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_42"},{"id":"imp_43","date":"2026-05-13","segment":"Entretenimento","amount":36.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_43"},{"id":"imp_53","date":"2026-05-05","segment":"Assinaturas","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"SPOTIFY","_groupId":"imp_53g"},{"id":"imp_54","date":"2026-05-07","segment":"Assinaturas","amount":30.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"HBO","_groupId":"imp_54g"},{"id":"imp_55","date":"2026-05-11","segment":"Assinaturas","amount":40.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"ADOBE","_groupId":"imp_55g"},{"id":"imp_56","date":"2026-05-12","segment":"Assinaturas","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"DRIVE","_groupId":"imp_56g"},{"id":"imp_57","date":"2026-05-15","segment":"Moradia","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"ÁGUA","_groupId":"imp_57g"},{"id":"imp_58","date":"2026-05-15","segment":"Moradia","amount":100.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"LUZ","_groupId":"imp_58g"},{"id":"imp_59","date":"2026-05-15","segment":"Moradia","amount":100.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"INTERNET","_groupId":"imp_59g"},{"id":"imp_60","date":"2026-05-15","segment":"Moradia","amount":85.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"MEI","_groupId":"imp_60g"},{"id":"imp_61","date":"2026-05-15","segment":"Moradia","amount":950.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"ALUGUEL","_groupId":"imp_61g"},{"id":"imp_100","date":"2026-05-13","segment":"Transporte","amount":172.0,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp100_g"},{"id":"imp_101","date":"2026-05-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_102","date":"2026-06-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_103","date":"2026-07-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_104","date":"2026-08-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_105","date":"2026-09-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_106","date":"2026-10-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_107","date":"2026-05-13","segment":"Entretenimento","amount":172.0,"installments":4,"currentInstallment":2,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"DECOLAR","_groupId":"dcl_g"},{"id":"imp_108","date":"2026-06-13","segment":"Entretenimento","amount":172.0,"installments":4,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"DECOLAR","_groupId":"dcl_g"},{"id":"imp_109","date":"2026-07-13","segment":"Entretenimento","amount":172.0,"installments":4,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"DECOLAR","_groupId":"dcl_g"},{"id":"imp_110","date":"2026-05-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_111","date":"2026-06-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":2,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_112","date":"2026-07-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_113","date":"2026-08-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_114","date":"2026-09-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_115","date":"2026-10-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_116","date":"2026-11-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_117","date":"2026-12-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_118","date":"2027-01-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_119","date":"2027-02-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_120","date":"2027-03-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":11,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_121","date":"2027-04-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":12,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_122","date":"2026-05-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_123","date":"2026-06-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_124","date":"2026-07-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_125","date":"2026-08-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_126","date":"2026-09-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_127","date":"2026-10-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_128","date":"2026-11-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_129","date":"2026-12-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_130","date":"2026-05-13","segment":"Transporte","amount":1383.0,"installments":12,"currentInstallment":11,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"CELTA","_groupId":"celta_g"},{"id":"imp_131","date":"2026-06-13","segment":"Transporte","amount":1383.0,"installments":12,"currentInstallment":12,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"CELTA","_groupId":"celta_g"},{"id":"imp_132","date":"2026-05-13","segment":"Assinaturas","amount":686.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub686_g"},{"id":"imp_133","date":"2026-05-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_134","date":"2026-06-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_135","date":"2026-07-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":11,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_136","date":"2026-08-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":12,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"}]));
+  if (localStorage.getItem('pf_seed_v') !== '5') {
+    localStorage.setItem('pf_expenses', JSON.stringify([{"id":"imp_1","date":"2026-05-02","segment":"Alimentação","amount":39.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_1"},{"id":"imp_2","date":"2026-05-03","segment":"Alimentação","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_2"},{"id":"imp_3","date":"2026-05-04","segment":"Alimentação","amount":12.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_3"},{"id":"imp_4","date":"2026-05-04","segment":"Alimentação","amount":31.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_4"},{"id":"imp_5","date":"2026-05-05","segment":"Alimentação","amount":19.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_5"},{"id":"imp_6","date":"2026-05-05","segment":"Supermercado","amount":25.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_6"},{"id":"imp_7","date":"2026-05-05","segment":"Alimentação","amount":31.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_7"},{"id":"imp_8","date":"2026-05-05","segment":"Alimentação","amount":12.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_8"},{"id":"imp_9","date":"2026-05-05","segment":"Assinaturas","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_9"},{"id":"imp_10","date":"2026-05-05","segment":"Alimentação","amount":39.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_10"},{"id":"imp_11","date":"2026-05-06","segment":"Alimentação","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_11"},{"id":"imp_12","date":"2026-05-06","segment":"Alimentação","amount":12.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_12"},{"id":"imp_13","date":"2026-05-07","segment":"Assinaturas","amount":30.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_13"},{"id":"imp_14","date":"2026-05-07","segment":"Alimentação","amount":7.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_14"},{"id":"imp_15","date":"2026-05-07","segment":"Transporte","amount":18.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_15"},{"id":"imp_16","date":"2026-05-07","segment":"Transporte","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_16"},{"id":"imp_17","date":"2026-05-07","segment":"Transporte","amount":9.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_17"},{"id":"imp_18","date":"2026-05-07","segment":"Assinaturas","amount":73.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_18"},{"id":"imp_19","date":"2026-05-07","segment":"Transporte","amount":198.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_19"},{"id":"imp_20","date":"2026-05-07","segment":"Transporte","amount":14.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_20"},{"id":"imp_21","date":"2026-05-07","segment":"Transporte","amount":43.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_21"},{"id":"imp_22","date":"2026-05-07","segment":"Assinaturas","amount":25.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_22"},{"id":"imp_23","date":"2026-05-07","segment":"Alimentação","amount":18.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_23"},{"id":"imp_24","date":"2026-05-07","segment":"Alimentação","amount":31.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_24"},{"id":"imp_25","date":"2026-05-08","segment":"Entretenimento","amount":65.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_25"},{"id":"imp_26","date":"2026-05-08","segment":"Transporte","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_26"},{"id":"imp_27","date":"2026-05-08","segment":"Transporte","amount":98.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_27"},{"id":"imp_28","date":"2026-05-08","segment":"Assinaturas","amount":110.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_28"},{"id":"imp_29","date":"2026-05-09","segment":"Entretenimento","amount":80.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_29"},{"id":"imp_30","date":"2026-05-09","segment":"Entretenimento","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_30"},{"id":"imp_31","date":"2026-05-09","segment":"Transporte","amount":20.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_31"},{"id":"imp_32","date":"2026-05-09","segment":"Entretenimento","amount":25.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_32"},{"id":"imp_33","date":"2026-05-10","segment":"Alimentação","amount":13.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_33"},{"id":"imp_34","date":"2026-05-10","segment":"Entretenimento","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_34"},{"id":"imp_35","date":"2026-05-10","segment":"Entretenimento","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_35"},{"id":"imp_36","date":"2026-05-11","segment":"Vestuário","amount":147.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_36"},{"id":"imp_37","date":"2026-05-11","segment":"Assinaturas","amount":40.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_37"},{"id":"imp_38","date":"2026-05-11","segment":"Entretenimento","amount":20.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_38"},{"id":"imp_39","date":"2026-05-11","segment":"Supermercado","amount":164.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_39"},{"id":"imp_40","date":"2026-05-12","segment":"Assinaturas","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_40"},{"id":"imp_41","date":"2026-05-12","segment":"Entretenimento","amount":27.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_41"},{"id":"imp_42","date":"2026-05-13","segment":"Supermercado","amount":22.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_42"},{"id":"imp_43","date":"2026-05-13","segment":"Entretenimento","amount":36.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"","_groupId":"imp_43"},{"id":"imp_53","date":"2026-05-05","segment":"Assinaturas","amount":41.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"SPOTIFY","_groupId":"imp_53g"},{"id":"imp_54","date":"2026-05-07","segment":"Assinaturas","amount":30.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"HBO","_groupId":"imp_54g"},{"id":"imp_55","date":"2026-05-11","segment":"Assinaturas","amount":40.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"ADOBE","_groupId":"imp_55g"},{"id":"imp_56","date":"2026-05-12","segment":"Assinaturas","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":true,"recurringEndDate":null,"notes":"DRIVE","_groupId":"imp_56g"},{"id":"imp_57","date":"2026-05-15","segment":"Moradia","amount":50.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"ÁGUA","_groupId":"imp_57g"},{"id":"imp_58","date":"2026-05-15","segment":"Moradia","amount":100.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"LUZ","_groupId":"imp_58g"},{"id":"imp_59","date":"2026-05-15","segment":"Moradia","amount":100.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"INTERNET","_groupId":"imp_59g"},{"id":"imp_60","date":"2026-05-15","segment":"Moradia","amount":85.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"MEI","_groupId":"imp_60g"},{"id":"imp_61","date":"2026-05-15","segment":"Moradia","amount":950.0,"installments":1,"currentInstallment":1,"paymentMethod":"pix","isRecurring":true,"recurringEndDate":null,"notes":"ALUGUEL","_groupId":"imp_61g"},{"id":"imp_100","date":"2026-05-13","segment":"Transporte","amount":172.0,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp100_g"},{"id":"imp_101","date":"2026-05-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_102","date":"2026-06-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_103","date":"2026-07-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_104","date":"2026-08-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_105","date":"2026-09-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_106","date":"2026-10-13","segment":"Transporte","amount":81.0,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"RAFAEL PEÇAS","_groupId":"rfp101_g"},{"id":"imp_107","date":"2026-05-13","segment":"Entretenimento","amount":172.0,"installments":4,"currentInstallment":2,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"DECOLAR","_groupId":"dcl_g"},{"id":"imp_108","date":"2026-06-13","segment":"Entretenimento","amount":172.0,"installments":4,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"DECOLAR","_groupId":"dcl_g"},{"id":"imp_109","date":"2026-07-13","segment":"Entretenimento","amount":172.0,"installments":4,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"DECOLAR","_groupId":"dcl_g"},{"id":"imp_110","date":"2026-05-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_111","date":"2026-06-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":2,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_112","date":"2026-07-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_113","date":"2026-08-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_114","date":"2026-09-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_115","date":"2026-10-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_116","date":"2026-11-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_117","date":"2026-12-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_118","date":"2027-01-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_119","date":"2027-02-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_120","date":"2027-03-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":11,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_121","date":"2027-04-13","segment":"Moradia","amount":197.0,"installments":12,"currentInstallment":12,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"ADVOGADO","_groupId":"adv_g"},{"id":"imp_122","date":"2026-05-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_123","date":"2026-06-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_124","date":"2026-07-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_125","date":"2026-08-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_126","date":"2026-09-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_127","date":"2026-10-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_128","date":"2026-11-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_129","date":"2026-12-13","segment":"Assinaturas","amount":625.0,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub625_g"},{"id":"imp_130","date":"2026-05-13","segment":"Transporte","amount":1383.0,"installments":12,"currentInstallment":11,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"CELTA","_groupId":"celta_g"},{"id":"imp_131","date":"2026-06-13","segment":"Transporte","amount":1383.0,"installments":12,"currentInstallment":12,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"CELTA","_groupId":"celta_g"},{"id":"imp_132","date":"2026-05-13","segment":"Assinaturas","amount":686.0,"installments":1,"currentInstallment":1,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"NUBANK","_groupId":"nub686_g"},{"id":"imp_133","date":"2026-05-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_134","date":"2026-06-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_135","date":"2026-07-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":11,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_136","date":"2026-08-13","segment":"Moradia","amount":172.0,"installments":12,"currentInstallment":12,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"SEGURO","_groupId":"seg_g"},{"id":"imp_new_aliancas_2","date":"2026-06-13","segment":"Casamento","amount":1000,"installments":4,"currentInstallment":2,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Alianças","_groupId":"aliancas_g"},{"id":"imp_new_aliancas_3","date":"2026-07-13","segment":"Casamento","amount":1000,"installments":4,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Alianças","_groupId":"aliancas_g"},{"id":"imp_new_aliancas_4","date":"2026-08-13","segment":"Casamento","amount":1000,"installments":4,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Alianças","_groupId":"aliancas_g"},{"id":"imp_new_celta_3","date":"2026-08-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":3,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_4","date":"2026-09-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":4,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_5","date":"2026-10-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":5,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_6","date":"2026-11-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":6,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_7","date":"2026-12-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":7,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_8","date":"2027-01-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":8,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_9","date":"2027-02-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":9,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"},{"id":"imp_new_celta_10","date":"2027-03-13","segment":"Patrimônio","amount":1000,"installments":10,"currentInstallment":10,"paymentMethod":"credit_card","isRecurring":false,"recurringEndDate":null,"notes":"Celta","_groupId":"celta_patri_g"}]));
     localStorage.setItem('pf_income', JSON.stringify([{"id":"inc_1","date":"2026-05-07","account":"Sicoob CNPJ","client":"Every TI","amount":5500.0,"notes":"Salário Abril","isRecurring":true,"recurringDay":5,"_groupId":"inc_1g"},{"id":"inc_2","date":"2026-05-11","account":"Inter CPF","client":"UAI Place","amount":300.0,"notes":"7o 6o vídeo IA","isRecurring":false,"_groupId":"inc_2"},{"id":"inc_3","date":"2026-05-13","account":"Sicoob CNPJ","client":"Música na Árvore","amount":2000.0,"notes":"50% jazz day","isRecurring":false,"_groupId":"inc_3"},{"id":"inc_4","date":"2026-05-13","account":"Inter CPF","client":"Saldo","amount":150.0,"notes":"saldo disponível","isRecurring":false,"_groupId":"inc_4"}]));
-    localStorage.setItem('pf_seed_v', '4');
+    localStorage.setItem('pf_seed_v', '5');
   }
 
   if (sessionStorage.getItem('auth') === 'ok') {
