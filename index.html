@@ -367,7 +367,8 @@ async function syncFromAPI() {
     let changed = false;
     if (Array.isArray(re) && re.length > 0) {
       const ns = JSON.stringify(re);
-      if (ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
+      const recentSave = (Date.now() - _lastLocalSave) < 60000; // 60-second lock after local write
+      if (!recentSave && ns !== JSON.stringify(DB.expenses)) { DB.expenses = re; localStorage.setItem('pf_expenses', ns); changed = true; }
     }
     if (rs !== null && rs !== undefined && rs !== '') {
       const nv = parseFloat(rs) || 0;
@@ -385,7 +386,19 @@ const CI = {}; // active Chart.js instances keyed by canvas id
 // DATA LAYER
 // ════════════════════════════════════════════════════
 const loadExp = () => DB.expenses;
-function saveExp(arr) { DB.expenses = arr; localStorage.setItem('pf_expenses', JSON.stringify(arr)); apiSet('pf_expenses', arr); }
+let _lastLocalSave = 0;  // timestamp of last local write (guards syncFromAPI overwrite)
+let _ccsRunning    = false; // prevents infinite recursion in updateCreditCardSummaries
+function saveExp(arr) {
+  DB.expenses = arr;
+  localStorage.setItem('pf_expenses', JSON.stringify(arr));
+  apiSet('pf_expenses', arr);
+  _lastLocalSave = Date.now();
+  if (!_ccsRunning) {
+    _ccsRunning = true;
+    try { updateCreditCardSummaries(); } catch(e) {}
+    _ccsRunning = false;
+  }
+}
 function getSaldo()    { return DB.saldo; }
 function setSaldo(val) { DB.saldo = val; localStorage.setItem('pf_saldo_disponivel', String(val)); apiSet('pf_saldo_disponivel', val); }
 const uid = () => crypto.randomUUID();
@@ -570,26 +583,47 @@ function setFilter(stateKey, val) {
 function updateCreditCardSummaries() {
   const expenses = loadExp();
   const real     = expenses.filter(e => !e.isCreditCardSummary);
-  const cycles   = lastNCycles(24);
-  const newSums  = [];
-  for (const c of cycles) {
+
+  // Collect all unique billing-cycle start dates present in expense data (past + future)
+  const cycleStarts = new Set();
+  for (const e of real) {
+    if (e.paymentMethod === 'credit_card') cycleStarts.add(isoDate(cycleStart(e.date)));
+  }
+  if (!cycleStarts.size) {
+    // No credit card expenses: remove all existing summaries
+    const withoutSums = real;
+    if (withoutSums.length !== expenses.length) saveExp(withoutSums);
+    return;
+  }
+
+  const newSums = [];
+  for (const csISO of cycleStarts) {
+    // Cycle end = 2nd of the following month
+    const cycleEnd = addMonths(csISO, 1);          // gives 3rd of next month
+    const dayBefore = new Date(cycleEnd + 'T12:00:00');
+    dayBefore.setDate(dayBefore.getDate() - 1);   // 2nd of next month
+    const endISO = isoDate(dayBefore);
+
     const total = real
-      .filter(e => e.paymentMethod === 'credit_card' && e.date >= c.start && e.date <= c.end)
+      .filter(e => e.paymentMethod === 'credit_card' && e.date >= csISO && e.date <= endISO)
       .reduce((s, e) => s + e.amount, 0);
     if (total <= 0) continue;
-    const cs  = new Date(c.start + 'T12:00:00');
-    const fol = new Date(cs.getFullYear(), cs.getMonth() + 1, 3);
-    const dt  = isoDate(fol);
-    const [y, m] = dt.slice(0,7).split('-');
+
+    const sumDate = addMonths(csISO, 1);           // 3rd of following month
+    const [y, m]  = sumDate.slice(0, 7).split('-');
     newSums.push({
-      id: `cc_total_${y}_${m}`, date: dt,
-      segment: 'Outros', amount: +total.toFixed(2),
+      id: 'cc_total_' + y + '_' + m,
+      date: sumDate,
+      segment: 'Outros',
+      amount: +total.toFixed(2),
       installments: 1, currentInstallment: 1,
       paymentMethod: 'pix', isRecurring: false, recurringEndDate: null,
-      notes: 'Cartão de Crédito', _groupId: `cc_total_${y}_${m}`,
+      notes: 'Cartão de Crédito',
+      _groupId: 'cc_total_' + y + '_' + m,
       isCreditCardSummary: true,
     });
   }
+
   const merged = [...real, ...newSums];
   if (JSON.stringify(merged) !== JSON.stringify(expenses)) saveExp(merged);
 }
